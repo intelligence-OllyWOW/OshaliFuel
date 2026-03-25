@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Super Admin - Oshali Fuel</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 14px;
+            font-weight: 300;
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: black;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 300;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #374151;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 300;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .credentials {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 300;
+        }
+        .credentials div {
+            margin-bottom: 8px;
+        }
+        .credentials strong {
+            font-weight: 400;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Setup Super Admin</h1>
+        <p>Click the button below to create the super admin account for Oshali Fuel Management System.</p>
+
+        <div class="credentials">
+            <div><strong>Email:</strong> super@oshali.com</div>
+            <div><strong>Password:</strong> super123</div>
+            <div><strong>Role:</strong> Super Admin</div>
+        </div>
+
+        <button id="createBtn" onclick="createSuperAdmin()">Create Super Admin</button>
+
+        <div id="status"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
+
+        const supabaseUrl = 'https://0ec90b57d6e95fcbda19832f.supabase.co'
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw'
+
+        const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+        window.createSuperAdmin = async function() {
+            const btn = document.getElementById('createBtn')
+            const statusDiv = document.getElementById('status')
+
+            btn.disabled = true
+            statusDiv.innerHTML = '<div class="status info">Creating super admin account...</div>'
+
+            try {
+                // Check if user already exists
+                const { data: existingProfile } = await supabase
+                    .from('profiles')
+                    .select('email')
+                    .eq('email', 'super@oshali.com')
+                    .maybeSingle()
+
+                if (existingProfile) {
+                    statusDiv.innerHTML = '<div class="status error">Super admin account already exists. You can now <a href="/" style="color: #991b1b; text-decoration: underline;">sign in</a>.</div>'
+                    btn.disabled = false
+                    return
+                }
+
+                // Create the auth user
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: 'super@oshali.com',
+                    password: 'super123',
+                    options: {
+                        data: {
+                            full_name: 'Super Admin'
+                        }
+                    }
+                })
+
+                if (authError) {
+                    throw new Error('Auth error: ' + authError.message)
+                }
+
+                if (!authData.user) {
+                    throw new Error('Failed to create user')
+                }
+
+                // Create the profile
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert([{
+                        id: authData.user.id,
+                        email: 'super@oshali.com',
+                        full_name: 'Super Admin',
+                        role: 'super_admin'
+                    }])
+
+                if (profileError) {
+                    throw new Error('Profile error: ' + profileError.message)
+                }
+
+                await supabase.auth.signOut()
+
+                statusDiv.innerHTML = '<div class="status success">✓ Super admin created successfully! You can now <a href="/" style="color: #065f46; text-decoration: underline;">sign in</a> with the credentials above.</div>'
+
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status error">Error: ' + error.message + '</div>'
+                btn.disabled = false
+            }
+        }
+    </script>
+</body>
+</html>
