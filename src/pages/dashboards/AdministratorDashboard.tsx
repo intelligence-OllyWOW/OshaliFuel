@@ -4,6 +4,7 @@ import Card from '../../components/ui/Card';
 import TankVisualization from '../../components/TankVisualization';
 import HorizontalBarList from '../../components/charts/HorizontalBarList';
 import Select from '../../components/ui/Select';
+import DeliveryNotesAndInvoices from '../../components/DeliveryNotesAndInvoices';
 import { Package, Receipt, FileText, TrendingUp, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency, formatNumber } from '../../lib/utils';
@@ -304,6 +305,13 @@ export default function AdministratorDashboard() {
                   />
                 ))}
               </div>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="space-y-6">
+              <h3 className="text-sm font-light text-gray-500">Delivery Notes & Invoices</h3>
+              <DeliveryNotesAndInvoices />
             </div>
           </Card>
         </div>
