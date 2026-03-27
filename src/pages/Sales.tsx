@@ -13,7 +13,7 @@ import { formatCurrency, generateInvoiceNumber } from '../lib/utils';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import { printDeliveryNote } from '../lib/printDeliveryNote';
-import { printInvoice } from '../lib/printInvoice';
+import { printInvoice, DEFAULT_PRINT_CONFIG, PrintConfig } from '../lib/printInvoice';
 
 async function fetchAllInvoicesWithPagination(): Promise<any[]> {
   const PAGE_SIZE = 1000;
@@ -137,6 +137,7 @@ export default function Sales() {
   const [activeTab, setActiveTab] = useState<'invoices' | 'statistics' | 'delivery_notes'>('invoices');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG);
 
   useEffect(() => {
     loadData();
@@ -207,6 +208,12 @@ export default function Sales() {
       const price = priceResult.data?.price_per_liter || 0;
       setCurrentPrice(price);
       setEffectivePrice(price);
+
+      const { data: settingsData } = await supabase
+        .from('system_settings')
+        .select('*')
+        .maybeSingle();
+      if (settingsData) setPrintConfig(settingsData as PrintConfig);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -933,16 +940,7 @@ export default function Sales() {
                   <Button size="sm" variant="secondary" onClick={() => downloadInvoicePDF(invoice)}>
                     <Download className="w-4 h-4" strokeWidth={1} />
                   </Button>
-                  <Button size="sm" variant="secondary" onClick={() => printInvoice({
-                    invoice_number: invoice.invoice_number,
-                    delivery_note_number: invoice.delivery_note_number,
-                    customer_name: invoice.client?.name || 'Walk-in',
-                    liters_sold: invoice.liters_sold,
-                    selling_price_per_liter: invoice.selling_price_per_liter,
-                    total_amount: invoice.total_amount,
-                    status: invoice.status,
-                    created_at: invoice.created_at,
-                  })}>
+                  <Button size="sm" variant="secondary" onClick={() => printInvoice(invoice, printConfig)}>
                     <Printer className="w-4 h-4" strokeWidth={1} />
                   </Button>
                   {canUpdateStatus && invoice.status !== 'void' && (
@@ -1397,7 +1395,7 @@ export default function Sales() {
             )}
 
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => printInvoice(selectedInvoice)} className="flex-1">
+              <Button variant="secondary" onClick={() => printInvoice(selectedInvoice!, printConfig)} className="flex-1">
                 <Printer className="w-4 h-4 mr-2" strokeWidth={1} />
                 Print Invoice
               </Button>

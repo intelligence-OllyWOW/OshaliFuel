@@ -15,10 +15,19 @@ interface SystemSettings {
   tank_high_level_threshold: number;
   tank_critical_level_threshold: number;
   testing_mode_enabled: boolean;
+  company_name:        string;
+  company_address:     string;
+  company_tel:         string;
+  company_vat:         string;
+  company_email:       string;
+  invoice_footer_text: string;
+  vat_percentage:      number;
+  vat_label:           string;
+  invoice_title:       string;
 }
 
 type DocumentType = 'PR' | 'PO' | 'GR' | 'INVOICE' | 'DN';
-type SettingsTab = 'tank-alerts' | 'test-mode' | 'doc-management';
+type SettingsTab = 'tank-alerts' | 'test-mode' | 'doc-management' | 'invoice-settings';
 
 interface DocumentOption {
   id: string;
@@ -86,6 +95,15 @@ export default function Settings() {
           tank_high_level_threshold: 90,
           tank_critical_level_threshold: 10,
           testing_mode_enabled: false,
+          company_name:        'Oshali Fuel',
+          company_address:     'Windhoek, Namibia',
+          company_tel:         '',
+          company_vat:         '',
+          company_email:       '',
+          invoice_footer_text: 'Thank you for your business! Goods once sold are not returnable. E&OE.',
+          vat_percentage:      15,
+          vat_label:           'Incl VAT (15%)',
+          invoice_title:       'INVOICE',
         });
       }
     } catch (error) {
@@ -299,6 +317,39 @@ export default function Settings() {
     });
   }
 
+  const [savingPrint, setSavingPrint] = useState(false);
+  const [printMessage, setPrintMessage] = useState('');
+
+  async function handleSavePrintConfig() {
+    if (!settings || !canEdit) return;
+    setSavingPrint(true);
+    setPrintMessage('');
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .update({
+          company_name:        settings.company_name,
+          company_address:     settings.company_address,
+          company_tel:         settings.company_tel,
+          company_vat:         settings.company_vat,
+          company_email:       settings.company_email,
+          invoice_footer_text: settings.invoice_footer_text,
+          vat_percentage:      settings.vat_percentage,
+          vat_label:           settings.vat_label,
+          invoice_title:       settings.invoice_title,
+        })
+        .eq('id', settings.id);
+      if (error) throw error;
+      setPrintMessage('Invoice settings saved successfully');
+      setTimeout(() => setPrintMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving invoice settings:', error);
+      setPrintMessage('Error saving invoice settings');
+    } finally {
+      setSavingPrint(false);
+    }
+  }
+
   const totalTestRecords = testDataStats
     ? Object.values(testDataStats).reduce((a, b) => a + b, 0)
     : 0;
@@ -489,7 +540,8 @@ export default function Settings() {
   const tabs = [
     { id: 'tank-alerts' as SettingsTab, label: 'Tank Alerts', icon: Gauge, show: true },
     { id: 'test-mode' as SettingsTab, label: 'Test Mode', icon: FlaskConical, show: canEdit },
-    { id: 'doc-management' as SettingsTab, label: 'Document Management', icon: FileText, show: isSuperAdmin },
+    { id: 'invoice-settings' as SettingsTab, label: 'Invoice & Receipt', icon: FileText, show: canEdit },
+    { id: 'doc-management' as SettingsTab, label: 'Document Management', icon: Search, show: isSuperAdmin },
   ].filter(tab => tab.show);
 
   if (loading) {
@@ -654,6 +706,107 @@ export default function Settings() {
                   You don't have permission to modify system settings
                 </div>
               )}
+            </div>
+          </Card>
+        )}
+
+        {activeTab === 'invoice-settings' && canEdit && (
+          <Card>
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
+                <FileText className="w-5 h-5 text-blue-600" strokeWidth={1.5} />
+                <h2 className="text-lg font-light">Invoice &amp; Receipt Settings</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-2">Company Name</label>
+                  <Input
+                    type="text"
+                    value={settings?.company_name || ''}
+                    onChange={(e) => settings && setSettings({ ...settings, company_name: e.target.value })}
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-2">Company Address</label>
+                  <Input
+                    type="text"
+                    value={settings?.company_address || ''}
+                    onChange={(e) => settings && setSettings({ ...settings, company_address: e.target.value })}
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-2">Company Tel</label>
+                  <Input
+                    type="text"
+                    value={settings?.company_tel || ''}
+                    onChange={(e) => settings && setSettings({ ...settings, company_tel: e.target.value })}
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-2">Company VAT Number</label>
+                  <Input
+                    type="text"
+                    value={settings?.company_vat || ''}
+                    onChange={(e) => settings && setSettings({ ...settings, company_vat: e.target.value })}
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-2">VAT Percentage (%)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={settings?.vat_percentage ?? 15}
+                    onChange={(e) => settings && setSettings({ ...settings, vat_percentage: parseFloat(e.target.value) || 0 })}
+                    disabled={!canEdit}
+                  />
+                  <p className="text-xs font-light text-gray-500 mt-1">Used to calculate VAT on invoices (Default: 15%)</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-light text-gray-700 mb-2">Invoice Footer Text</label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-light focus:outline-none focus:ring-1 focus:ring-black focus:border-black resize-none disabled:bg-gray-50 disabled:text-gray-500"
+                    rows={3}
+                    value={settings?.invoice_footer_text || ''}
+                    onChange={(e) => settings && setSettings({ ...settings, invoice_footer_text: e.target.value })}
+                    disabled={!canEdit}
+                  />
+                </div>
+              </div>
+
+              {printMessage && (
+                <div className={`p-3 rounded-xl text-sm font-light ${
+                  printMessage.includes('Error')
+                    ? 'bg-red-50 text-red-700'
+                    : 'bg-green-50 text-green-700'
+                }`}>
+                  {printMessage}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <Button onClick={handleSavePrintConfig} disabled={savingPrint}>
+                  {savingPrint ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" strokeWidth={1.5} />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" strokeWidth={1.5} />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+                <Button variant="secondary" onClick={loadSettings} disabled={savingPrint}>
+                  Reset
+                </Button>
+              </div>
             </div>
           </Card>
         )}
