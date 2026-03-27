@@ -11,7 +11,7 @@
   --bg:#0f1117; --surface:#1a1d27; --border:#2e3248;
   --accent:#4f8ef7; --accent2:#38d9a9;
   --text:#e8eaf0; --muted:#6b7280; --danger:#f87171;
-  --S: 3.2px;
+  --S: 3.0px;
 }
 
 * { box-sizing:border-box; margin:0; padding:0; }
@@ -72,8 +72,8 @@ header {
 #screen-receipt {
   background:#fff;
   box-shadow:0 8px 40px rgba(0,0,0,.6);
-  width:  calc(191.15 * var(--S));
-  height: calc(212.15 * var(--S));
+  width:  calc(195 * var(--S));
+  height: calc(202 * var(--S));
   position:relative;
   flex-shrink:0;
 }
@@ -82,7 +82,7 @@ header {
   left:  calc(1.5  * var(--S));
   top:   calc(10   * var(--S));
   width: calc(181  * var(--S));
-  height:calc(200  * var(--S));
+  height:calc(182  * var(--S));
   overflow:hidden;
 }
 
@@ -98,15 +98,15 @@ header {
 }
 .sec-hdr { font-weight:700; font-size:calc(2.5*var(--S)); text-transform:uppercase; letter-spacing:.04em; margin-bottom:calc(0.5*var(--S)); }
 
-#sec-a  { left:0;                  top:0;                  width:calc(104*var(--S)); height:calc(34*var(--S)); }
-#sec-b  { left:calc(108*var(--S)); top:0;                  width:calc(73*var(--S));  height:calc(34*var(--S)); }
-#sec-c  { left:0;                  top:calc(41*var(--S));  width:calc(104*var(--S)); height:calc(37*var(--S)); }
-#sec-d  { left:calc(108*var(--S)); top:calc(41*var(--S));  width:calc(73*var(--S));  height:calc(37*var(--S)); }
-#sec-e  { left:0;                  top:calc(82*var(--S));  width:calc(181*var(--S)); height:calc(15*var(--S)); background:#f0f0f0; display:flex; align-items:center; font-weight:700; }
-#sec-f  { left:0;                  top:calc(98*var(--S));  width:calc(181*var(--S)); height:calc(62*var(--S)); }
-#sec-g  { left:0;                  top:calc(165*var(--S)); width:calc(119*var(--S)); height:calc(37*var(--S)); }
-#sec-il { left:calc(123*var(--S)); top:calc(165*var(--S)); width:calc(27*var(--S));  height:calc(42*var(--S)); display:flex; flex-direction:column; justify-content:space-around; text-align:right; font-family:'Courier New',Courier,monospace; }
-#sec-ir { left:calc(150*var(--S)); top:calc(165*var(--S)); width:calc(31*var(--S));  height:calc(42*var(--S)); display:flex; flex-direction:column; justify-content:space-around; text-align:right; font-family:'Courier New',Courier,monospace; font-weight:700; }
+#sec-a  { left:0;                  top:calc(13*var(--S));  width:calc(104*var(--S)); height:calc(34*var(--S)); }
+#sec-b  { left:calc(108*var(--S)); top:calc(13*var(--S));  width:calc(73*var(--S));  height:calc(34*var(--S)); }
+#sec-c  { left:0;                  top:calc(56*var(--S));  width:calc(104*var(--S)); height:calc(37*var(--S)); }
+#sec-d  { left:calc(108*var(--S)); top:calc(56*var(--S));  width:calc(73*var(--S));  height:calc(37*var(--S)); }
+#sec-e  { left:0;                  top:calc(97*var(--S));  width:calc(181*var(--S)); height:calc(15*var(--S)); background:#f0f0f0; display:flex; align-items:center; font-weight:700; }
+#sec-f  { left:0;                  top:calc(113*var(--S)); width:calc(181*var(--S)); height:calc(62*var(--S)); }
+#sec-g  { left:0;                  top:calc(179*var(--S)); width:calc(119*var(--S)); height:calc(30*var(--S)); }
+#sec-il { left:calc(123*var(--S)); top:calc(179*var(--S)); width:calc(27*var(--S));  height:calc(30*var(--S)); display:flex; flex-direction:column; justify-content:space-around; text-align:right; font-family:'Courier New',Courier,monospace; }
+#sec-ir { left:calc(150*var(--S)); top:calc(179*var(--S)); width:calc(31*var(--S));  height:calc(30*var(--S)); display:flex; flex-direction:column; justify-content:space-around; text-align:right; font-family:'Courier New',Courier,monospace; font-weight:700; }
 
 .cgrid { display:grid; grid-template-columns:calc(18*var(--S)) calc(9*var(--S)) 1fr calc(19*var(--S)) calc(19*var(--S)) calc(19*var(--S)); gap:0 calc(1*var(--S)); width:100%; font-size:calc(2.4*var(--S)); }
 .cr { text-align:right; }
@@ -125,7 +125,7 @@ header {
 
 @media print {
   @page {
-    size: 191.15mm 212.15mm;
+    size: 195mm 202mm;
     margin: 10mm 10mm 1.5mm 1.5mm;
   }
 
@@ -138,12 +138,12 @@ header {
   #print-receipt {
     display:block !important;
     position:fixed;
-    top:13mm; left:5mm;
+    top:3mm; left:5mm;
     width:181mm;
-    height:200mm;
+    height:182mm;
     overflow:hidden;
     font-family:'Courier New',Courier,monospace;
-    font-size:11pt;
+    font-size:10.5pt;
     font-weight:700;
     color:#000;
     background:#fff;
@@ -156,21 +156,21 @@ header {
     padding:1.5mm;
     font-size:10.5pt;
     font-weight:700;
-    line-height:1.5;
+    line-height:1.4;
     color:#000;
     background:#fff;
   }
   .psec-hdr { font-weight:900; font-size:11pt; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.8mm; }
 
-  #pa  { left:0;    top:0;    width:104mm; height:34mm; }
-  #pb  { left:108mm;top:0;    width:73mm;  height:34mm; }
-  #pc  { left:0;    top:41mm; width:104mm; height:37mm; }
-  #pd  { left:108mm;top:41mm; width:73mm;  height:37mm; }
-  #pe  { left:0;    top:82mm; width:181mm; height:15mm; background:#eee !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; display:flex !important; align-items:center; font-weight:700; }
-  #pf  { left:0;    top:98mm; width:181mm; height:62mm; }
-  #pg  { left:0;    top:165mm;width:119mm; height:37mm; }
-  #pil { left:123mm;top:165mm;width:27mm;  height:42mm; display:flex !important; flex-direction:column; justify-content:space-around; text-align:right; padding:1mm; font-family:'Courier New',Courier,monospace; }
-  #pir { left:150mm;top:165mm;width:31mm;  height:42mm; display:flex !important; flex-direction:column; justify-content:space-around; text-align:right; padding:1mm; font-family:'Courier New',Courier,monospace; font-weight:700; }
+  #pa  { left:0;    top:13mm; width:104mm; height:34mm; }
+  #pb  { left:108mm;top:13mm; width:73mm;  height:34mm; }
+  #pc  { left:0;    top:56mm; width:104mm; height:37mm; }
+  #pd  { left:108mm;top:56mm; width:73mm;  height:37mm; }
+  #pe  { left:0;    top:97mm; width:181mm; height:15mm; background:#eee !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; display:flex !important; align-items:center; font-weight:700; }
+  #pf  { left:0;    top:113mm;width:181mm; height:62mm; }
+  #pg  { left:0;    top:179mm;width:119mm; height:30mm; }
+  #pil { left:123mm;top:179mm;width:27mm;  height:30mm; display:flex !important; flex-direction:column; justify-content:space-around; text-align:right; padding:1mm; font-family:'Courier New',Courier,monospace; }
+  #pir { left:150mm;top:179mm;width:31mm;  height:30mm; display:flex !important; flex-direction:column; justify-content:space-around; text-align:right; padding:1mm; font-family:'Courier New',Courier,monospace; font-weight:700; }
 
   .pcgrid { display:grid !important; grid-template-columns:18mm 9mm 1fr 19mm 19mm 19mm; gap:0 1mm; width:100%; font-size:10pt; font-weight:700; }
   .pcr { text-align:right; }
@@ -188,7 +188,7 @@ header {
     <div class="logo">⬡ POS Receipt Printer</div>
     <div class="sub">Epson FX-890ii / FX-890iiN · 9-pin Impact · Continuous Form</div>
   </div>
-  <div class="badge">191.15 × 212.15 mm</div>
+  <div class="badge">195 × 202 mm</div>
 </header>
 
 <div class="app-body">
@@ -264,7 +264,7 @@ header {
 
 <!-- ═══ SCREEN PREVIEW ═══ -->
 <main class="preview-area">
-  <div class="preview-label">SCREEN PREVIEW (3.2 px/mm) · Print outputs real mm via @page</div>
+  <div class="preview-label">SCREEN PREVIEW (3.0 px/mm) · Print outputs real mm via @page</div>
   <div id="screen-receipt">
     <div id="screen-printable">
       <div class="sec" id="sec-a">

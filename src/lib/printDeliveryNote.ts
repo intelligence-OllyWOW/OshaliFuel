@@ -16,10 +16,6 @@ interface PrintableDeliveryNote {
 export function printDeliveryNote(note: PrintableDeliveryNote) {
   const date = format(new Date(note.created_at), 'dd/MM/yyyy');
   const time = format(new Date(note.created_at), 'HH:mm');
-  const litres = note.litres_dispensed.toFixed(2);
-  const litresReading = (note.litres_reading || 0).toFixed(2);
-  const meterA = note.meter_reading_a.toFixed(2);
-  const meterB = note.meter_reading_b.toFixed(2);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -51,51 +47,61 @@ body {
   margin: 0 auto;
 }
 
+/* All sections: heavy weight for impact printing */
 .sec {
   position: absolute;
   overflow: hidden;
   font-family: 'Courier New', Courier, monospace;
-  color: #000;
+  font-weight: 900;
   font-size: 10.5pt;
-  font-weight: 700;
+  color: #000 !important;
   line-height: 1.5;
   padding: 1.5mm;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
+/* Section headers */
 .sec-hdr {
   font-weight: 900;
-  font-size: 12pt;
+  font-size: 11.5pt;
+  color: #000 !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 1mm;
-  border-bottom: 0.4pt solid #000;
+  border-bottom: 0.5pt solid #000;
   padding-bottom: 1mm;
+  margin-bottom: 1.5mm;
 }
 
 .sec-hdr-lg {
   font-weight: 900;
-  font-size: 14pt;
+  font-size: 12pt;
+  color: #000 !important;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   margin-bottom: 0.5mm;
 }
 
+/* Small uppercase labels */
 .label {
-  font-size: 8pt;
-  font-weight: 400;
-  color: #555;
+  font-size: 9pt;
+  font-weight: 700;
+  color: #000 !important;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
 
+/* Large value text */
 .value {
-  font-size: 11pt;
-  font-weight: 700;
+  font-size: 11.5pt;
+  font-weight: 900;
+  color: #000 !important;
 }
 
 .value-lg {
-  font-size: 16pt;
+  font-size: 14pt;
   font-weight: 900;
+  color: #000 !important;
 }
 
 .row {
@@ -104,11 +110,9 @@ body {
 
 #sec-a  { left: 0;     top: 0;     width: 104mm; height: 34mm; }
 #sec-b  { left: 108mm; top: 0;     width: 73mm;  height: 34mm; }
-#sec-c  { left: 0;     top: 38mm;  width: 104mm; height: 34mm; }
-#sec-d  { left: 108mm; top: 38mm;  width: 73mm;  height: 34mm; }
-#sec-e  { left: 0;     top: 76mm;  width: 181mm; height: 12mm; background: #eee; display: flex; align-items: center; font-weight: 900; font-size: 9pt; letter-spacing: 0.04em; }
-#sec-f  { left: 0;     top: 89mm;  width: 181mm; height: 52mm; }
-#sec-g  { left: 0;     top: 145mm; width: 181mm; height: 55mm; }
+#sec-c  { left: 0;     top: 48mm;  width: 104mm; height: 34mm; }
+#sec-d  { left: 108mm; top: 48mm;  width: 73mm;  height: 34mm; }
+#sec-g  { left: 0;     top: 102mm; width: 181mm; height: 55mm; }
 
 .detail-grid {
   display: grid;
@@ -144,17 +148,20 @@ body {
   padding-top: 4mm;
 }
 
+/* Signature lines — heavier and more visible */
 .sig-box {
-  border-top: 0.4pt solid #000;
+  border-top: 1.5pt solid #000;
   padding-top: 2mm;
-  margin-top: 12mm;
+  margin-top: 14mm;
 }
 
+/* Signature labels */
 .sig-label {
-  font-size: 8pt;
-  font-weight: 400;
-  color: #555;
+  font-size: 9pt;
+  font-weight: 700;
+  color: #000;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .summary-row {
@@ -170,6 +177,12 @@ body {
   border-top: 0.6pt solid #000;
   padding-top: 2mm;
   margin-top: 1mm;
+}
+
+/* Numeric values */
+.num {
+  font-weight: 900;
+  font-size: 11pt;
 }
 
 .no-print {
@@ -234,12 +247,8 @@ body {
       <div class="value">${esc(note.note_number)}</div>
     </div>
     <div class="row">
-      <div class="label">Date</div>
-      <div class="value">${date}</div>
-    </div>
-    <div class="row">
-      <div class="label">Time</div>
-      <div class="value">${time}</div>
+      <div class="label">Date &amp; Time</div>
+      <div class="value">${date} at ${time}</div>
     </div>
   </div>
 
@@ -269,63 +278,22 @@ body {
     </div>
   </div>
 
-  <!-- Section E: Column Headers -->
-  <div class="sec" id="sec-e">
-    <div class="header-grid">
-      <div class="header-cell">METER A (START)</div>
-      <div class="header-cell">METER B (END)</div>
-      <div class="header-cell">LITRES DISPENSED</div>
-      <div class="header-cell">PUMP READING</div>
-    </div>
-  </div>
-
-  <!-- Section F: Meter Details -->
-  <div class="sec" id="sec-f">
-    <div class="detail-grid">
-      <div class="detail-cell">
-        <div class="value-lg">${meterA}</div>
-      </div>
-      <div class="detail-cell">
-        <div class="value-lg">${meterB}</div>
-      </div>
-      <div class="detail-cell">
-        <div class="value-lg">${litres} L</div>
-      </div>
-      <div class="detail-cell">
-        <div class="value-lg">${litresReading} L</div>
-      </div>
-    </div>
-
-    <div style="margin-top: 6mm; padding: 3mm; border: 0.4pt solid #000;">
-      <div class="summary-row">
-        <span class="label">Meter Difference (B - A)</span>
-        <span class="value">${litres} Litres</span>
-      </div>
-      <div class="summary-row">
-        <span class="label">Pump Meter Reading</span>
-        <span class="value">${litresReading} Litres</span>
-      </div>
-      <div class="summary-row total">
-        <span style="font-size: 11pt; font-weight: 900;">TOTAL LITRES DISPENSED</span>
-        <span style="font-size: 14pt; font-weight: 900;">${litres} L</span>
-      </div>
-    </div>
-  </div>
-
   <!-- Section G: Signatures -->
   <div class="sec" id="sec-g">
-    <div class="sec-hdr">Acknowledgement</div>
-    <div class="sig-grid">
+    <div class="sec-hdr">ACKNOWLEDGEMENT</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0 6mm; margin-top:2mm; width:100%;">
       <div>
-        <div class="label">Driver Name: ${esc(note.driver_name)}</div>
-        <div class="sig-box">
-          <div class="sig-label">Driver Signature</div>
+        <div style="font-size:8.5pt; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:#000;">DRIVER NAME</div>
+        <div style="font-size:11pt; font-weight:900; color:#000; margin-bottom:10mm;">${esc(note.driver_name)}</div>
+        <div style="border-top:1.5pt solid #000; padding-top:2mm;">
+          <div style="font-size:8.5pt; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:#000;">DRIVER SIGNATURE</div>
         </div>
       </div>
       <div>
-        <div class="label">Attendant: ${esc(note.attendant_name)}</div>
-        <div class="sig-box">
-          <div class="sig-label">Attendant Signature</div>
+        <div style="font-size:8.5pt; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:#000;">ATTENDANT NAME</div>
+        <div style="font-size:11pt; font-weight:900; color:#000; margin-bottom:10mm;">${esc(note.attendant_name)}</div>
+        <div style="border-top:1.5pt solid #000; padding-top:2mm;">
+          <div style="font-size:8.5pt; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:#000;">ATTENDANT SIGNATURE</div>
         </div>
       </div>
     </div>
