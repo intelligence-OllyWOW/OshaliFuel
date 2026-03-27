@@ -11,7 +11,6 @@ import {
   LogOut,
   Menu,
   X,
-  Fuel,
   DollarSign,
   Users,
   Briefcase,
@@ -304,7 +303,7 @@ export default function Layout({ children }: LayoutProps) {
         >
           <div className={`flex flex-col h-full ${
             sidebarCollapsed
-              ? 'bg-black m-3 rounded-3xl shadow-2xl'
+              ? 'bg-brand-navy m-3 rounded-3xl shadow-2xl'
               : 'bg-white border-r border-gray-100'
           } transition-all duration-300`}>
             <div className={`flex items-center ${
@@ -313,8 +312,12 @@ export default function Layout({ children }: LayoutProps) {
               {!sidebarCollapsed ? (
                 <>
                   <div className="flex items-center gap-2">
-                    <Fuel className="w-6 h-6" strokeWidth={1} />
-                    <span className="text-lg font-light">Oshali Fuel</span>
+                    <img
+                      src="/oshali-logo.png"
+                      alt="Oshali Fuel"
+                      className="h-8 w-auto object-contain"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -330,13 +333,21 @@ export default function Layout({ children }: LayoutProps) {
                   </div>
                 </>
               ) : (
-                <button
-                  onClick={() => setSidebarCollapsed(false)}
-                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-                  title="Expand sidebar"
-                >
-                  <ChevronRight className="w-6 h-6 text-white" strokeWidth={1} />
-                </button>
+                <div className="flex flex-col items-center gap-1">
+                  <img
+                    src="/oshali-logo.png"
+                    alt="Oshali Fuel"
+                    className="h-6 w-6 object-contain mb-2"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                  <button
+                    onClick={() => setSidebarCollapsed(false)}
+                    className="p-2 hover:bg-brand-navy-light rounded-lg transition-colors"
+                    title="Expand sidebar"
+                  >
+                    <ChevronRight className="w-6 h-6 text-white" strokeWidth={1} />
+                  </button>
+                </div>
               )}
             </div>
 
@@ -353,11 +364,11 @@ export default function Layout({ children }: LayoutProps) {
                     } rounded-xl text-sm font-light transition-all duration-200 group ${
                       sidebarCollapsed
                         ? isActive
-                          ? 'bg-white text-black'
-                          : 'text-white hover:bg-gray-800'
+                          ? 'bg-brand-gold text-brand-navy'
+                          : 'text-white hover:bg-brand-navy-light'
                         : isActive
-                          ? 'bg-gray-100 text-black'
-                          : 'text-gray-600 hover:bg-gray-50'
+                          ? 'bg-brand-gold/15 text-brand-navy font-medium'
+                          : 'text-gray-600 hover:bg-brand-navy/5'
                     }`}
                     title={sidebarCollapsed ? item.label : undefined}
                   >
@@ -384,7 +395,7 @@ export default function Layout({ children }: LayoutProps) {
                   sidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3'
                 } w-full text-sm font-light ${
                   sidebarCollapsed
-                    ? 'text-white hover:bg-red-900'
+                    ? 'text-white hover:bg-red-800'
                     : 'text-red-600 hover:bg-red-50'
                 } rounded-xl transition-colors`}
                 title={sidebarCollapsed ? 'Sign Out' : undefined}
@@ -462,7 +473,7 @@ export default function Layout({ children }: LayoutProps) {
         )}
 
         {!isSuperAdmin && (
-          <header className={`sticky z-40 bg-white border-b border-gray-100 ${isTestingMode ? 'top-10' : 'top-0'}`}>
+          <header className={`sticky z-40 bg-white border-b-2 border-brand-navy/10 ${isTestingMode ? 'top-10' : 'top-0'}`}>
             <div className="flex items-center justify-between px-4 py-4">
               <div className="flex items-center gap-4">
                 {!isMobile && (
@@ -475,8 +486,12 @@ export default function Layout({ children }: LayoutProps) {
                 )}
                 {isMobile && (
                   <div className="flex items-center gap-2">
-                    <Fuel className="w-6 h-6" strokeWidth={1} />
-                    <span className="text-lg font-light">Oshali Fuel</span>
+                    <img
+                      src="/oshali-logo.png"
+                      alt="Oshali Fuel"
+                      className="h-7 w-auto object-contain"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
                   </div>
                 )}
               </div>

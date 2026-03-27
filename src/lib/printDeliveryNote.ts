@@ -298,6 +298,11 @@ body {
       </div>
     </div>
   </div>
+
+  <!-- sec-logo — below #sec-g (top:102mm + height:55mm = 157mm) -->
+  <div id="sec-logo" style="position:absolute;left:0mm;top:157mm;width:181mm;height:70mm;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;">
+    <img src="${window.location.origin}/oshali-logo.png" style="width:100%;height:100%;max-width:181mm;max-height:70mm;object-fit:contain;object-position:center;opacity:0.80;" onerror="this.style.display='none'" />
+  </div>
 </div>
 
 </body>

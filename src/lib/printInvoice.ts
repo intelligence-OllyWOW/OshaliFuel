@@ -47,7 +47,7 @@ export interface PrintConfig {
 
 export const DEFAULT_PRINT_CONFIG: PrintConfig = {
   company_name:        'Oshali Fuel',
-  company_address:     'Windhoek, Namibia',
+  company_address:     'Oshali Village, B1 Road, Ondangwa',
   company_tel:         '',
   company_vat:         '',
   company_email:       '',
@@ -267,7 +267,7 @@ body {
 #p-il {
   position: absolute;
   left: 116mm;
-  top: 178mm;
+  top: 180mm;
   width: 38mm;
   height: 37mm;
   display: flex;
@@ -285,7 +285,7 @@ body {
 #p-ir {
   position: absolute;
   left: 147mm;
-  top: 178mm;
+  top: 180mm;
   width: 35mm;
   height: 37mm;
   display: flex;
@@ -369,7 +369,7 @@ body {
 
   <!-- §A Company / Seller -->
   <div id="p-a">
-    <div class="psec-hdr" style="border-bottom: none;">${esc(config.company_name)}</div>
+    <div class="psec-hdr" style="border-bottom: none;">${config?.company_name ?? 'OSHALI FUEL'}</div>
     <div>${esc(config.company_address)}</div>
     <div><span class="lbl">Tel: </span>${config.company_tel ? esc(config.company_tel) : '—'}</div>
     <div><span class="lbl">VAT No: </span>${config.company_vat ? esc(config.company_vat) : '—'}</div>
@@ -416,6 +416,11 @@ body {
       <span class="cr num" style="border-right: 1pt solid #666; padding-right: 2mm; margin-right: 1mm;">${fmt(invoice.selling_price_per_liter)}</span>
       <span class="cr num">${fmt(netAmount)}</span>
     </div>
+  </div>
+
+  <!-- §logo — between §F (ends 168mm) and §G (starts 178mm) -->
+  <div id="p-logo" style="position:absolute;left:0mm;top:135mm;width:181mm;height:60mm;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;">
+    <img src="${window.location.origin}/oshali-logo.png" style="width:100%;height:100%;max-width:181mm;max-height:60mm;object-fit:contain;object-position:center;opacity:0.80;" onerror="this.style.display='none'" />
   </div>
 
   <!-- §G Notes (unconditional) -->

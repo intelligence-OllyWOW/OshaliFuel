@@ -18,7 +18,7 @@ export default function Button({
   const baseStyles = 'rounded-xl font-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants = {
-    primary: 'bg-black text-white hover:bg-gray-800',
+    primary: 'bg-brand-navy text-white hover:bg-brand-navy-light',
     secondary: 'bg-white text-black border border-gray-200 hover:bg-gray-50',
     ghost: 'bg-transparent text-gray-600 hover:bg-gray-50',
     danger: 'bg-red-500 text-white hover:bg-red-600',

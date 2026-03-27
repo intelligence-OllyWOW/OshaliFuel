@@ -17,6 +17,12 @@ export default {
         xs: '2px',
       },
       colors: {
+        brand: {
+          navy:         '#1B2B5E',
+          'navy-light': '#243570',
+          gold:         '#F5A623',
+          'gold-light': '#F7B84B',
+        },
         glass: {
           light: 'rgba(255, 255, 255, 0.7)',
           DEFAULT: 'rgba(255, 255, 255, 0.5)',
