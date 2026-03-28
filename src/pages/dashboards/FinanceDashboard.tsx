@@ -217,7 +217,7 @@ export default function FinanceDashboard() {
                     <div className="text-xs font-light text-amber-700">Requires payment collection or follow-up</div>
                   </div>
                 </div>
-                <Link to="/sales" className="text-sm font-light text-amber-700 hover:text-amber-900 whitespace-nowrap">
+                <Link to="/sales?tab=invoices" className="text-sm font-light text-amber-700 hover:text-amber-900 whitespace-nowrap">
                   Settle invoices →
                 </Link>
               </div>

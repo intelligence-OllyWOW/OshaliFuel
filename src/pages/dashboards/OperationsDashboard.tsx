@@ -215,7 +215,7 @@ export default function OperationsDashboard() {
                 </div>
               </Card>
             </Link>
-            <Link to="/procurement" className="block">
+            <Link to="/procurement?tab=gr" className="block">
               <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-sidebar-bg">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-sidebar-bg flex items-center justify-center flex-shrink-0">
@@ -228,7 +228,7 @@ export default function OperationsDashboard() {
                 </div>
               </Card>
             </Link>
-            <Link to="/sales" className="block">
+            <Link to="/sales?tab=invoices" className="block">
               <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-sidebar-bg">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-sidebar-bg flex items-center justify-center flex-shrink-0">

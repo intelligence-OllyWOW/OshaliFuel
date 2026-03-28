@@ -237,13 +237,13 @@ export default function GeneralManagerDashboard() {
             </div>
             <div className="flex items-center gap-1">
               {[
-                { label: 'Purchase Requisition', sub: 'Submitted / Under Review', icon: <ClipboardList className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-amber-50 border-amber-200 text-amber-700' },
-                { label: 'Purchase Order', sub: 'Sent to Supplier', icon: <ShoppingCart className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-blue-50 border-blue-200 text-blue-700' },
-                { label: 'Goods Received', sub: 'Awaiting Allocation', icon: <Truck className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-                { label: 'Tank Allocated', sub: 'Inventory Updated', icon: <Layers className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-purple-50 border-purple-200 text-purple-700' },
+                { label: 'Purchase Requisition', sub: 'Submitted / Under Review', icon: <ClipboardList className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-amber-50 border-amber-200 text-amber-700', tab: 'pr' },
+                { label: 'Purchase Order', sub: 'Sent to Supplier', icon: <ShoppingCart className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-blue-50 border-blue-200 text-blue-700', tab: 'po' },
+                { label: 'Goods Received', sub: 'Awaiting Allocation', icon: <Truck className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-emerald-50 border-emerald-200 text-emerald-700', tab: 'gr' },
+                { label: 'Tank Allocated', sub: 'Inventory Updated', icon: <Layers className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-purple-50 border-purple-200 text-purple-700', tab: 'gr' },
               ].map((stage, i, arr) => (
                 <div key={stage.label} className="flex items-center flex-1 min-w-0">
-                  <Link to="/procurement" className={`flex-1 min-w-0 flex items-center gap-2 p-3 rounded-xl border ${stage.color} hover:opacity-80 transition-opacity`}>
+                  <Link to={`/procurement?tab=${stage.tab}`} className={`flex-1 min-w-0 flex items-center gap-2 p-3 rounded-xl border ${stage.color} hover:opacity-80 transition-opacity`}>
                     {stage.icon}
                     <div className="min-w-0">
                       <div className="text-xs font-medium truncate">{stage.label}</div>
@@ -260,7 +260,7 @@ export default function GeneralManagerDashboard() {
 
           {/* Quick Actions */}
           <div className="grid grid-cols-3 gap-3">
-            <Link to="/procurement" className="block">
+            <Link to="/procurement?tab=pr" className="block">
               <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-amber-400">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-amber-400 flex items-center justify-center flex-shrink-0">
@@ -286,7 +286,7 @@ export default function GeneralManagerDashboard() {
                 </div>
               </Card>
             </Link>
-            <Link to="/sales" className="block">
+            <Link to="/sales?tab=invoices" className="block">
               <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-sidebar-bg">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-sidebar-bg flex items-center justify-center flex-shrink-0">
