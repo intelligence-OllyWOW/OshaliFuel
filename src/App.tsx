@@ -114,7 +114,7 @@ function AppContent() {
           <Route
             path="/portal/general-manager/*"
             element={
-              <ProtectedRoute allowedRoles={['super_admin']}>
+              <ProtectedRoute allowedRoles={['super_admin', 'general_manager']}>
                 <Layout>
                   <GeneralManagerPortal />
                 </Layout>
@@ -124,7 +124,7 @@ function AppContent() {
           <Route
             path="/portal/finance/*"
             element={
-              <ProtectedRoute allowedRoles={['super_admin']}>
+              <ProtectedRoute allowedRoles={['super_admin', 'finance']}>
                 <Layout>
                   <FinancePortal />
                 </Layout>
@@ -134,7 +134,7 @@ function AppContent() {
           <Route
             path="/portal/administrator/*"
             element={
-              <ProtectedRoute allowedRoles={['super_admin']}>
+              <ProtectedRoute allowedRoles={['super_admin', 'administrator']}>
                 <Layout>
                   <AdministratorPortal />
                 </Layout>
@@ -144,7 +144,7 @@ function AppContent() {
           <Route
             path="/portal/operations/*"
             element={
-              <ProtectedRoute allowedRoles={['super_admin']}>
+              <ProtectedRoute allowedRoles={['super_admin', 'operations_supervisor']}>
                 <Layout>
                   <OperationsPortal />
                 </Layout>
@@ -154,7 +154,7 @@ function AppContent() {
           <Route
             path="/portal/attendant"
             element={
-              <ProtectedRoute allowedRoles={['attendant']}>
+              <ProtectedRoute allowedRoles={['super_admin', 'attendant', 'pump_attendant']}>
                 <Layout>
                   <AttendantPortal />
                 </Layout>
