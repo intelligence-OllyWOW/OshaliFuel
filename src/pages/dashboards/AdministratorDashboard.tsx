@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import OshaliLoader from '../../components/OshaliLoader';
 import Card from '../../components/ui/Card';
-import TankVisualization from '../../components/TankVisualization';
 import HorizontalBarList from '../../components/charts/HorizontalBarList';
 import Select from '../../components/ui/Select';
-import DeliveryNotesAndInvoices from '../../components/DeliveryNotesAndInvoices';
 import { Package, Receipt, FileText, TrendingUp, Calendar } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency, formatNumber } from '../../lib/utils';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
@@ -282,36 +281,34 @@ export default function AdministratorDashboard() {
             </Card>
           </div>
 
-          <Card>
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-light text-gray-500">Tank Inventory</h3>
-                <div className="text-xs font-light text-gray-400">
-                  Total: {formatNumber(stats.totalInventory)}L / {formatNumber(tanks.reduce((sum, t) => sum + t.capacity_liters, 0))}L
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {tanks.map((tank) => (
-                  <TankVisualization
-                    key={tank.id}
-                    tankName={tank.tank_name}
-                    capacity={tank.capacity_liters}
-                    currentLiters={tank.current_liters}
-                    items={tank.items}
-                    lowThreshold={settings.tank_low_level_threshold}
-                    highThreshold={settings.tank_high_level_threshold}
-                    criticalThreshold={settings.tank_critical_level_threshold}
-                  />
-                ))}
-              </div>
-            </div>
-          </Card>
+          {/* Compact Tank Status Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {tanks.map((tank) => {
+              const pct = tank.capacity_liters > 0 ? (tank.current_liters / tank.capacity_liters) * 100 : 0;
+              const isCritical = pct <= settings.tank_critical_level_threshold;
+              const isLow = pct <= settings.tank_low_level_threshold;
+              const barColor = isCritical ? 'bg-red-500' : isLow ? 'bg-amber-400' : 'bg-blue-500';
+              const labelColor = isCritical ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-gray-700';
+              return (
+                <Card key={tank.id}>
+                  <div className="text-xs font-light text-gray-500 mb-1 truncate">{tank.tank_name}</div>
+                  <div className={`text-lg font-light ${labelColor}`}>{Math.round(pct)}%</div>
+                  <div className="text-xs font-light text-gray-400 mb-2">{formatNumber(tank.current_liters)}L</div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full ${barColor} rounded-full`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
 
+          {/* Delivery Activity Summary */}
           <Card>
-            <div className="space-y-6">
-              <h3 className="text-sm font-light text-gray-500">Delivery Notes & Invoices</h3>
-              <DeliveryNotesAndInvoices />
-            </div>
+            <h3 className="text-sm font-light text-gray-500 mb-3">Delivery Activity</h3>
+            <div className="text-2xl font-light mb-1">{formatNumber(stats.monthSales)}L dispensed this month</div>
+            <Link to="/sales" className="text-xs font-light text-blue-600 hover:text-blue-700">
+              View all delivery notes →
+            </Link>
           </Card>
         </div>
       )}

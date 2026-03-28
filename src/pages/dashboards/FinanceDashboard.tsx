@@ -5,7 +5,8 @@ import Card from '../../components/ui/Card';
 import RevenueTrendChart from '../../components/RevenueTrendChart';
 import HorizontalBarList from '../../components/charts/HorizontalBarList';
 import Select from '../../components/ui/Select';
-import { DollarSign, Receipt, FileText, TrendingUp, Calendar } from 'lucide-react';
+import { DollarSign, Receipt, FileText, TrendingUp, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency, formatNumber } from '../../lib/utils';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from 'date-fns';
@@ -200,22 +201,39 @@ export default function FinanceDashboard() {
         <OshaliLoader variant="inline" />
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {statCards.map((stat) => (
-              <Card key={stat.label}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-xs font-light text-gray-500 mb-2">{stat.label}</div>
-                    <div className="text-2xl font-light">{stat.value}</div>
+
+          {/* Zone 1 — Unsettled Invoice Queue */}
+          {stats.unsettledInvoices > 0 ? (
+            <Card className="border-2 border-amber-300 bg-amber-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-400 flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="w-5 h-5 text-white" strokeWidth={1.5} />
                   </div>
-                  <div className={`${stat.color} ${stat.bg} w-12 h-12 rounded-xl flex items-center justify-center`}>
-                    {stat.icon}
+                  <div>
+                    <div className="text-sm font-medium text-amber-800">
+                      {stats.unsettledInvoices} unsettled invoice{stats.unsettledInvoices > 1 ? 's' : ''} pending
+                    </div>
+                    <div className="text-xs font-light text-amber-700">Requires payment collection or follow-up</div>
                   </div>
                 </div>
-              </Card>
-            ))}
-          </div>
+                <Link to="/sales" className="text-sm font-light text-amber-700 hover:text-amber-900 whitespace-nowrap">
+                  Settle invoices →
+                </Link>
+              </div>
+            </Card>
+          ) : (
+            <Card className="border border-emerald-200 bg-emerald-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-5 h-5 text-emerald-600" strokeWidth={1.5} />
+                </div>
+                <div className="text-sm font-light text-emerald-700">All invoices settled — no outstanding payments</div>
+              </div>
+            </Card>
+          )}
 
+          {/* Zone 2 — Financial Summary */}
           <Card>
             <div className="space-y-4">
               <h3 className="text-sm font-light text-gray-500">{periodLabel} Financial Summary</h3>
@@ -238,10 +256,11 @@ export default function FinanceDashboard() {
             </div>
           </Card>
 
+          {/* Zone 3 — Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-gray-700">Recent Daily Revenue (Last 7 Days)</h3>
+                <h3 className="text-sm font-medium text-gray-700">Daily Revenue (Last 7 Days)</h3>
                 {dailyRevenue.length > 0 ? (
                   <HorizontalBarList data={dailyRevenue} />
                 ) : (
@@ -251,10 +270,10 @@ export default function FinanceDashboard() {
                 )}
               </div>
             </Card>
-
             <RevenueTrendChart />
           </div>
 
+          {/* Zone 4 — Recent Purchase Orders */}
           <Card>
             <div className="space-y-4">
               <h3 className="text-sm font-light text-gray-500">Recent Purchase Orders</h3>
@@ -292,6 +311,24 @@ export default function FinanceDashboard() {
               )}
             </div>
           </Card>
+
+          {/* Stat cards — supporting context at bottom */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {statCards.map((stat) => (
+              <Card key={stat.label}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs font-light text-gray-500 mb-2">{stat.label}</div>
+                    <div className="text-2xl font-light">{stat.value}</div>
+                  </div>
+                  <div className={`${stat.color} ${stat.bg} w-12 h-12 rounded-xl flex items-center justify-center`}>
+                    {stat.icon}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
         </div>
       )}
     </div>

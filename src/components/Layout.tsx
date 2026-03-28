@@ -46,37 +46,37 @@ const portals: Portal[] = [
   {
     id: 'super_admin_portal',
     label: 'Super Admin',
-    icon: <ShieldCheck strokeWidth={1} />,
+    icon: <ShieldCheck className="w-4 h-4" strokeWidth={1} />,
     description: 'System administration',
   },
   {
     id: 'general_manager',
     label: 'General Manager',
-    icon: <Briefcase strokeWidth={1} />,
+    icon: <Briefcase className="w-4 h-4" strokeWidth={1} />,
     description: 'Operations overview',
   },
   {
     id: 'finance',
     label: 'Finance',
-    icon: <DollarSign strokeWidth={1} />,
+    icon: <DollarSign className="w-4 h-4" strokeWidth={1} />,
     description: 'Financial management',
   },
   {
     id: 'administrator',
     label: 'Administrator',
-    icon: <UserCog strokeWidth={1} />,
+    icon: <UserCog className="w-4 h-4" strokeWidth={1} />,
     description: 'Daily operations',
   },
   {
     id: 'operations_supervisor',
     label: 'Operations Supervisor',
-    icon: <Settings strokeWidth={1} />,
+    icon: <Settings className="w-4 h-4" strokeWidth={1} />,
     description: 'Operational oversight',
   },
   {
     id: 'attendant',
     label: 'Attendant',
-    icon: <FileText strokeWidth={1} />,
+    icon: <FileText className="w-4 h-4" strokeWidth={1} />,
     description: 'Create delivery notes',
   },
 ];

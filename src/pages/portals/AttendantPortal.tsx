@@ -18,6 +18,7 @@ type DeliveryNote = Database['public']['Tables']['delivery_notes']['Row'];
 export default function AttendantPortal() {
   const { profile } = useAuth();
   const [view, setView] = useState<'create' | 'list'>('create');
+  const [showAll, setShowAll] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
@@ -242,7 +243,7 @@ export default function AttendantPortal() {
         </div>
       </div>
 
-      <div className="p-4 max-w-2xl mx-auto">
+      <div className="p-6 max-w-2xl mx-auto">
         {feedback && (
           <div className={`mb-4 p-4 rounded-xl border ${
             feedback.type === 'success'
@@ -334,7 +335,7 @@ export default function AttendantPortal() {
               />
 
               <div className="border-t border-gray-200 pt-5 mt-5">
-                <h3 className="text-base font-semibold text-gray-900 mb-4">Meter Readings</h3>
+                <h3 className="text-sm font-semibold text-gray-700 mb-4">Meter Readings</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     name="meterA"
@@ -382,7 +383,7 @@ export default function AttendantPortal() {
               </div>
 
               <div className="border-t border-gray-200 pt-5 mt-5">
-                <h3 className="text-base font-semibold text-gray-900 mb-3">Meter Photo</h3>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Meter Photo</h3>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -424,9 +425,13 @@ export default function AttendantPortal() {
                 <div className="font-semibold text-gray-900 text-lg">{profile?.full_name}</div>
               </div>
 
-              <Button type="submit" className="w-full py-4 text-base" disabled={creating}>
+              <button
+                type="submit"
+                disabled={creating}
+                className="w-full py-4 text-base rounded-xl font-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-[#F5A623] text-white hover:bg-[#e09610]"
+              >
                 {creating ? 'Creating...' : 'Create Delivery Note'}
-              </Button>
+              </button>
             </form>
           </Card>
         ) : (
@@ -439,7 +444,8 @@ export default function AttendantPortal() {
                 </div>
               </Card>
             ) : (
-              deliveryNotes.map((note) => (
+              <>
+              {(showAll ? deliveryNotes : deliveryNotes.slice(0, 5)).map((note) => (
                 <Card key={note.id}>
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
@@ -500,7 +506,17 @@ export default function AttendantPortal() {
                     </div>
                   </div>
                 </Card>
-              ))
+              ))}
+              {!showAll && deliveryNotes.length > 5 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAll(true)}
+                  className="w-full py-3 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  Show all {deliveryNotes.length} notes
+                </button>
+              )}
+              </>
             )}
           </div>
         )}

@@ -445,9 +445,6 @@ body {
 
 </div>
 
-<script>
-  setTimeout(() => window.print(), 400);
-<\/script>
 </body>
 </html>`;
 
@@ -462,7 +459,11 @@ body {
   const url = URL.createObjectURL(blob);
   const printWindow = window.open(url, '_blank');
   if (printWindow) {
-    printWindow.onload = () => URL.revokeObjectURL(url);
+    printWindow.onload = () => {
+      URL.revokeObjectURL(url);
+      printWindow.addEventListener('afterprint', () => printWindow.close());
+      printWindow.print();
+    };
   } else {
     URL.revokeObjectURL(url);
     const iframe = document.createElement('iframe');

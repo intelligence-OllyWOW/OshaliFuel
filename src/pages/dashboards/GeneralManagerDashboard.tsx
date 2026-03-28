@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import OshaliLoader from '../../components/OshaliLoader';
 import Card from '../../components/ui/Card';
-import TankVisualization from '../../components/TankVisualization';
 import RevenueTrendChart from '../../components/RevenueTrendChart';
 import HorizontalBarList from '../../components/charts/HorizontalBarList';
 import Select from '../../components/ui/Select';
-import { Package, Receipt, DollarSign, Users, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
+import { Package, Receipt, DollarSign, Users, TrendingUp, TrendingDown, Calendar, ClipboardList, ShoppingCart, Truck, Layers, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency, formatNumber } from '../../lib/utils';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from 'date-fns';
@@ -228,6 +228,80 @@ export default function GeneralManagerDashboard() {
         <OshaliLoader variant="inline" />
       ) : (
         <div className="space-y-6">
+
+          {/* Zone 1 — Procurement Pipeline Tracker */}
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-light text-gray-500">Procurement Pipeline</h3>
+              <Link to="/procurement" className="text-xs font-light text-blue-600 hover:text-blue-700">View all →</Link>
+            </div>
+            <div className="flex items-center gap-1">
+              {[
+                { label: 'Purchase Requisition', sub: 'Submitted / Under Review', icon: <ClipboardList className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-amber-50 border-amber-200 text-amber-700' },
+                { label: 'Purchase Order', sub: 'Sent to Supplier', icon: <ShoppingCart className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-blue-50 border-blue-200 text-blue-700' },
+                { label: 'Goods Received', sub: 'Awaiting Allocation', icon: <Truck className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+                { label: 'Tank Allocated', sub: 'Inventory Updated', icon: <Layers className="w-4 h-4" strokeWidth={1.5} />, color: 'bg-purple-50 border-purple-200 text-purple-700' },
+              ].map((stage, i, arr) => (
+                <div key={stage.label} className="flex items-center flex-1 min-w-0">
+                  <Link to="/procurement" className={`flex-1 min-w-0 flex items-center gap-2 p-3 rounded-xl border ${stage.color} hover:opacity-80 transition-opacity`}>
+                    {stage.icon}
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium truncate">{stage.label}</div>
+                      <div className="text-xs font-light opacity-70 truncate">{stage.sub}</div>
+                    </div>
+                  </Link>
+                  {i < arr.length - 1 && (
+                    <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mx-0.5" strokeWidth={1.5} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-3 gap-3">
+            <Link to="/procurement" className="block">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-amber-400">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-400 flex items-center justify-center flex-shrink-0">
+                    <ClipboardList className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">New Purchase Requisition</div>
+                    <div className="text-xs font-light text-gray-500">Start procurement</div>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+            <Link to="/pricing" className="block">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-sidebar-bg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sidebar-bg flex items-center justify-center flex-shrink-0">
+                    <TrendingUp className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">Update Pricing</div>
+                    <div className="text-xs font-light text-gray-500">Selling price settings</div>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+            <Link to="/sales" className="block">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-sidebar-bg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sidebar-bg flex items-center justify-center flex-shrink-0">
+                    <Receipt className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">New Invoice</div>
+                    <div className="text-xs font-light text-gray-500">Create sales invoice</div>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          </div>
+
+          {/* Zone 2 — Stat Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {statCards.map((stat) => (
               <Card key={stat.label}>
@@ -244,6 +318,7 @@ export default function GeneralManagerDashboard() {
             ))}
           </div>
 
+          {/* Zone 3 — Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <div className="space-y-4">
@@ -257,10 +332,10 @@ export default function GeneralManagerDashboard() {
                 )}
               </div>
             </Card>
-
             <RevenueTrendChart />
           </div>
 
+          {/* Zone 4 — Pricing + Compact Tank Summary */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card>
               <div className="space-y-4">
@@ -289,30 +364,36 @@ export default function GeneralManagerDashboard() {
             </Card>
 
             <Card className="lg:col-span-2">
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-light text-gray-500">Tank Inventory</h3>
                   <div className="text-xs font-light text-gray-400">
-                    Total: {formatNumber(stats.totalInventory)}L / {formatNumber(tanks.reduce((sum, t) => sum + t.capacity_liters, 0))}L
+                    {formatNumber(stats.totalInventory)}L / {formatNumber(tanks.reduce((sum, t) => sum + t.capacity_liters, 0))}L total
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {tanks.map((tank) => (
-                    <TankVisualization
-                      key={tank.id}
-                      tankName={tank.tank_name}
-                      capacity={tank.capacity_liters}
-                      currentLiters={tank.current_liters}
-                      items={tank.items}
-                      lowThreshold={settings.tank_low_level_threshold}
-                      highThreshold={settings.tank_high_level_threshold}
-                      criticalThreshold={settings.tank_critical_level_threshold}
-                    />
-                  ))}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {tanks.map((tank) => {
+                    const pct = tank.capacity_liters > 0 ? (tank.current_liters / tank.capacity_liters) * 100 : 0;
+                    const isCritical = pct <= settings.tank_critical_level_threshold;
+                    const isLow = pct <= settings.tank_low_level_threshold;
+                    const barColor = isCritical ? 'bg-red-500' : isLow ? 'bg-amber-400' : 'bg-blue-500';
+                    const labelColor = isCritical ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-gray-700';
+                    return (
+                      <div key={tank.id} className="p-3 bg-gray-50 rounded-xl">
+                        <div className="text-xs font-light text-gray-500 mb-1 truncate">{tank.tank_name}</div>
+                        <div className={`text-lg font-light ${labelColor}`}>{Math.round(pct)}%</div>
+                        <div className="text-xs font-light text-gray-400 mb-2">{formatNumber(tank.current_liters)}L</div>
+                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div className={`h-full ${barColor} rounded-full`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </Card>
           </div>
+
         </div>
       )}
     </div>

@@ -5,9 +5,10 @@ import Card from '../../components/ui/Card';
 import TankVisualization from '../../components/TankVisualization';
 import HorizontalBarList from '../../components/charts/HorizontalBarList';
 import Select from '../../components/ui/Select';
-import { Package, Receipt, AlertCircle, FileText, Calendar } from 'lucide-react';
+import { Receipt, AlertCircle, FileText, Calendar, ClipboardList, Truck, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { formatCurrency, formatNumber } from '../../lib/utils';
+import { formatNumber } from '../../lib/utils';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from 'date-fns';
 
 interface DashboardStats {
@@ -172,39 +173,6 @@ export default function OperationsDashboard() {
     }
   }
 
-  const periodLabel = datePreset === 'today' ? "Today's" : "This Month's";
-
-  const statCards = [
-    {
-      label: 'Total Inventory',
-      value: `${formatNumber(stats.totalInventory)}L`,
-      icon: <Package strokeWidth={1} />,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-    },
-    {
-      label: `${periodLabel} Sales`,
-      value: `${formatNumber(stats.todaySales)}L`,
-      icon: <Receipt strokeWidth={1} />,
-      color: 'text-green-600',
-      bg: 'bg-green-50',
-    },
-    {
-      label: 'Low Level Tanks',
-      value: stats.lowLevelTanks.toString(),
-      icon: <AlertCircle strokeWidth={1} />,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
-    },
-    {
-      label: 'Pending PRs',
-      value: stats.pendingPRs.toString(),
-      icon: <FileText strokeWidth={1} />,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
-    },
-  ];
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
@@ -231,85 +199,148 @@ export default function OperationsDashboard() {
         <OshaliLoader variant="inline" />
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {statCards.map((stat) => (
-              <Card key={stat.label}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-xs font-light text-gray-500 mb-2">{stat.label}</div>
-                    <div className="text-2xl font-light">{stat.value}</div>
+
+          {/* Zone 1 — Primary Action Buttons */}
+          <div className="grid grid-cols-3 gap-3">
+            <Link to="/procurement" className="block">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-amber-400">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-400 flex items-center justify-center flex-shrink-0">
+                    <ClipboardList className="w-5 h-5 text-white" strokeWidth={1.5} />
                   </div>
-                  <div className={`${stat.color} ${stat.bg} w-12 h-12 rounded-xl flex items-center justify-center`}>
-                    {stat.icon}
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-800">New PR</div>
+                    <div className="text-xs font-light text-gray-500">Purchase Requisition</div>
                   </div>
                 </div>
               </Card>
-            ))}
+            </Link>
+            <Link to="/procurement" className="block">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-sidebar-bg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sidebar-bg flex items-center justify-center flex-shrink-0">
+                    <Truck className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-800">Allocate GR</div>
+                    <div className="text-xs font-light text-gray-500">Goods Received → Tank</div>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+            <Link to="/sales" className="block">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-sidebar-bg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sidebar-bg flex items-center justify-center flex-shrink-0">
+                    <Receipt className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-800">Create Invoice</div>
+                    <div className="text-xs font-light text-gray-500">New sales invoice</div>
+                  </div>
+                </div>
+              </Card>
+            </Link>
           </div>
 
+          {/* Low-level alert */}
           {stats.lowLevelTanks > 0 && (
             <Card>
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-orange-600" strokeWidth={1.5} />
-                <div>
-                  <div className="text-sm font-light">
-                    {stats.lowLevelTanks} tank{stats.lowLevelTanks > 1 ? 's are' : ' is'} running low on fuel
-                  </div>
-                  <a href="/procurement" className="text-xs font-light text-blue-600 hover:text-blue-700">
-                    Create purchase requisition →
-                  </a>
+                <div className="text-sm font-light">
+                  {stats.lowLevelTanks} tank{stats.lowLevelTanks > 1 ? 's are' : ' is'} running low on fuel —{' '}
+                  <Link to="/procurement" className="text-blue-600 hover:text-blue-700">Create purchase requisition →</Link>
                 </div>
               </div>
             </Card>
           )}
 
+          {/* Zone 2 — Compact Tank Status Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {tanks.map((tank) => {
+              const pct = tank.capacity_liters > 0 ? (tank.current_liters / tank.capacity_liters) * 100 : 0;
+              const isCritical = pct <= settings.tank_critical_level_threshold;
+              const isLow = pct <= settings.tank_low_level_threshold;
+              const barColor = isCritical ? 'bg-red-500' : isLow ? 'bg-amber-400' : 'bg-blue-500';
+              const labelColor = isCritical ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-gray-700';
+              return (
+                <Card key={tank.id}>
+                  <div className="text-xs font-light text-gray-500 mb-1 truncate">{tank.tank_name}</div>
+                  <div className={`text-lg font-light ${labelColor}`}>{Math.round(pct)}%</div>
+                  <div className="text-xs font-light text-gray-400 mb-2">{formatNumber(tank.current_liters)}L</div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full ${barColor} rounded-full`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Zone 3 — Pending PRs + Recent Delivery Notes */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium text-gray-700">Daily Sales (Last 7 Days)</h3>
-                {dailySales.length > 0 ? (
-                  <HorizontalBarList data={dailySales} />
-                ) : (
-                  <div className="text-center py-8 text-sm font-light text-gray-400">
-                    No sales data for this period
-                  </div>
-                )}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-purple-600" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <div className="text-sm font-light text-gray-700">Pending Requisitions</div>
+                  <div className="text-2xl font-light">{stats.pendingPRs}</div>
+                </div>
               </div>
+              <Link to="/procurement" className="text-xs font-light text-blue-600 hover:text-blue-700">
+                View all purchase requisitions →
+              </Link>
             </Card>
 
             <Card>
-              <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-light text-gray-500">Recent Delivery Notes</h3>
-                {recentDeliveries.length === 0 ? (
-                  <div className="text-center py-8 text-sm font-light text-gray-400">
-                    No delivery notes yet
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {recentDeliveries.map((note) => (
-                      <div key={note.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <div className="flex-1">
-                          <div className="text-sm font-light">{note.customer_name}</div>
-                          <div className="text-xs font-light text-gray-500 mt-1">
-                            {note.attendant_name}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-light text-blue-600">{note.litres_dispensed}L</div>
-                          <div className="text-xs font-light text-gray-500">{format(new Date(note.created_at), 'MMM d, HH:mm')}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <Link to="/sales" className="flex items-center gap-1 text-xs font-light text-blue-600 hover:text-blue-700">
+                  <Plus className="w-3 h-3" strokeWidth={2} /> New
+                </Link>
               </div>
+              {recentDeliveries.length === 0 ? (
+                <div className="text-center py-8 text-sm font-light text-gray-400">No delivery notes yet</div>
+              ) : (
+                <div className="space-y-2">
+                  {recentDeliveries.map((note) => (
+                    <div key={note.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-light truncate">{note.customer_name}</div>
+                        <div className="text-xs font-light text-gray-500">{note.attendant_name}</div>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-3">
+                        <div className="text-sm font-light text-blue-600">{note.litres_dispensed}L</div>
+                        <Link to="/sales" className="text-xs font-light text-amber-600 hover:text-amber-700">
+                          Invoice →
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
 
+          {/* Zone 4 — Daily Sales Chart */}
+          <Card>
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-700">Daily Sales (Last 7 Days)</h3>
+              {dailySales.length > 0 ? (
+                <HorizontalBarList data={dailySales} />
+              ) : (
+                <div className="text-center py-8 text-sm font-light text-gray-400">No sales data for this period</div>
+              )}
+            </div>
+          </Card>
+
+          {/* Full Tank Visualization — detail view below the fold */}
           <Card>
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-light text-gray-500">Tank Inventory</h3>
+                <h3 className="text-sm font-light text-gray-500">Tank Inventory Detail</h3>
                 <div className="text-xs font-light text-gray-400">
                   Total: {formatNumber(stats.totalInventory)}L / {formatNumber(tanks.reduce((sum, t) => sum + t.capacity_liters, 0))}L
                 </div>
@@ -330,6 +361,7 @@ export default function OperationsDashboard() {
               </div>
             </div>
           </Card>
+
         </div>
       )}
     </div>

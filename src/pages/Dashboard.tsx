@@ -8,7 +8,8 @@ import RevenueTrendChart from '../components/RevenueTrendChart';
 import HorizontalBarList from '../components/charts/HorizontalBarList';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { Package, Receipt, FileText, TrendingUp, DollarSign, TrendingDown, AlertCircle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package, Receipt, FileText, TrendingUp, DollarSign, TrendingDown, AlertCircle, Calendar, ChevronLeft, ChevronRight, Users, Bell, Shield, Settings, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { formatCurrency, formatNumber } from '../lib/utils';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays } from 'date-fns';
@@ -343,6 +344,28 @@ export default function Dashboard() {
         <OshaliLoader variant="inline" />
       ) : (
         <div className="space-y-6">
+
+          {/* System Health Strip */}
+          <Card>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-light text-gray-500 uppercase tracking-wide">System Health</h3>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-500" strokeWidth={2} />
+                  <span className="text-xs font-light text-amber-700">Portal Access</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-500" strokeWidth={2} />
+                  <span className="text-xs font-light text-amber-700">Document Numbers</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2} />
+                  <span className="text-xs font-light text-emerald-700">Core Services</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {statCards.map((stat) => (
               <Card key={stat.label}>
@@ -357,6 +380,64 @@ export default function Dashboard() {
                 </div>
               </Card>
             ))}
+          </div>
+
+          {/* Quick Admin Actions */}
+          <div className="grid grid-cols-4 gap-3">
+            <Link to="/users" className="block">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-amber-400">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-400 flex items-center justify-center flex-shrink-0">
+                    <Users className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">Manage Users</div>
+                    <div className="text-xs font-light text-gray-500">Accounts & roles</div>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+            {/* TODO: Portal switcher not implemented — no dedicated route exists */}
+            <div className="block opacity-50 cursor-not-allowed">
+              <Card className="border-2 border-sidebar-bg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sidebar-bg flex items-center justify-center flex-shrink-0">
+                    <Shield className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">Switch Portal</div>
+                    <div className="text-xs font-light text-gray-500">Not yet available</div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+            <Link to="/settings" className="block">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-sidebar-bg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sidebar-bg flex items-center justify-center flex-shrink-0">
+                    <Settings className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">System Settings</div>
+                    <div className="text-xs font-light text-gray-500">Config & thresholds</div>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+            {/* TODO: Notifications page not built yet — bug report item #11 */}
+            <div className="block opacity-50 cursor-not-allowed">
+              <Card className="border-2 border-sidebar-bg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sidebar-bg flex items-center justify-center flex-shrink-0">
+                    <Bell className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">Notifications</div>
+                    <div className="text-xs font-light text-gray-500">Not yet available</div>
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -494,9 +575,9 @@ export default function Dashboard() {
                   <div className="text-sm font-light">
                     You have {stats.pendingPRs} purchase requisition{stats.pendingPRs > 1 ? 's' : ''} pending review
                   </div>
-                  <a href="/procurement" className="text-xs font-light text-blue-600 hover:text-blue-700">
+                  <Link to="/procurement" className="text-xs font-light text-blue-600 hover:text-blue-700">
                     View all requisitions →
-                  </a>
+                  </Link>
                 </div>
               </div>
             </Card>
@@ -508,6 +589,19 @@ export default function Dashboard() {
                 <h2 className="text-xl font-light mb-6">Analytics</h2>
               </div>
               <Analytics />
+
+              {/* Recent Activity Feed — TODO: add notifications query to loadDashboardData */}
+              <Card>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <Bell className="w-4 h-4 text-gray-500" strokeWidth={1.5} />
+                  </div>
+                  <h3 className="text-sm font-light text-gray-500">Recent Activity</h3>
+                </div>
+                <div className="text-center py-8 text-sm font-light text-gray-400">
+                  Activity feed not yet connected — add notifications query to loadDashboardData
+                </div>
+              </Card>
             </>
           )}
         </div>
