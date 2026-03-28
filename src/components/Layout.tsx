@@ -301,86 +301,103 @@ export default function Layout({ children }: LayoutProps) {
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } ${sidebarCollapsed ? 'w-20' : 'w-64'}`}
         >
-          <div className={`flex flex-col h-full ${
-            sidebarCollapsed
-              ? 'bg-brand-navy m-3 rounded-3xl shadow-2xl'
-              : 'bg-white border-r border-gray-100'
-          } transition-all duration-300`}>
-            <div className={`flex items-center ${
-              sidebarCollapsed ? 'justify-center p-4' : 'justify-between p-6'
-            } ${!sidebarCollapsed && 'border-b border-gray-100'} transition-all duration-300`}>
-              {!sidebarCollapsed ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <img
-                      src="/oshali-logo.png"
-                      alt="Oshali Fuel"
-                      className="h-8 w-auto object-contain"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setSidebarCollapsed(true)}
-                      className="hidden lg:block p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                      title="Collapse sidebar"
-                    >
-                      <ChevronLeft className="w-5 h-5" strokeWidth={1} />
-                    </button>
-                    <button onClick={() => setSidebarOpen(false)} className="lg:hidden">
-                      <X className="w-5 h-5" strokeWidth={1} />
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center gap-1">
+          {sidebarCollapsed ? (
+            <div className="flex flex-col h-full">
+              {/* Logo above the pill — clickable to expand */}
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+                <img
+                  src="/oshali-logo-icon.png"
+                  alt="Oshali"
+                  style={{ width: '44px', height: '44px', objectFit: 'contain' }}
+                  onClick={() => setSidebarCollapsed(false)}
+                  className="cursor-pointer"
+                />
+              </div>
+
+              {/* Nav pill — no logo inside */}
+              <div
+                className="flex flex-col bg-sidebar-bg shadow-2xl"
+                style={{ flex: 1, margin: '0 12px 12px', borderRadius: '24px' }}
+              >
+                <nav className="flex-1 pt-3 px-2 pb-2 space-y-1 overflow-y-auto">
+                  {filteredNavItems.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setSidebarOpen(false)}
+                        className={`flex items-center justify-center p-3 rounded-xl text-sm font-light transition-all duration-200 ${
+                          isActive
+                            ? 'bg-brand-gold text-brand-navy'
+                            : 'text-white hover:bg-sidebar-hover'
+                        }`}
+                        title={item.label}
+                      >
+                        <div className="w-5 h-5 flex-shrink-0">{item.icon}</div>
+                      </Link>
+                    );
+                  })}
+                </nav>
+
+                <div className="p-2">
+                  <button
+                    onClick={handleSignOut}
+                    className="flex items-center justify-center p-3 w-full text-sm font-light text-white hover:bg-red-800 rounded-xl transition-colors"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-5 h-5" strokeWidth={1} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col h-full bg-white border-r border-gray-100">
+              <div className="flex flex-col justify-center p-6 pb-4 border-b border-gray-100">
+                <div className="flex items-center justify-center w-full mb-2">
                   <img
                     src="/oshali-logo.png"
                     alt="Oshali Fuel"
-                    className="h-6 w-6 object-contain mb-2"
+                    className="h-20 w-auto object-contain"
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
+                </div>
+                <div className="flex items-center justify-end w-full gap-2">
                   <button
-                    onClick={() => setSidebarCollapsed(false)}
-                    className="p-2 hover:bg-brand-navy-light rounded-lg transition-colors"
-                    title="Expand sidebar"
+                    onClick={() => setSidebarCollapsed(true)}
+                    className="hidden lg:block p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Collapse sidebar"
                   >
-                    <ChevronRight className="w-6 h-6 text-white" strokeWidth={1} />
+                    <ChevronLeft className="w-5 h-5" strokeWidth={1} />
+                  </button>
+                  <button onClick={() => setSidebarOpen(false)} className="lg:hidden">
+                    <X className="w-5 h-5" strokeWidth={1} />
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
 
-            <nav className={`flex-1 ${sidebarCollapsed ? 'p-2' : 'p-4'} space-y-1 overflow-y-auto`}>
-              {filteredNavItems.map((item) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center ${
-                      sidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3'
-                    } rounded-xl text-sm font-light transition-all duration-200 group ${
-                      sidebarCollapsed
-                        ? isActive
-                          ? 'bg-brand-gold text-brand-navy'
-                          : 'text-white hover:bg-brand-navy-light'
-                        : isActive
+              <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                {filteredNavItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-light transition-all duration-200 ${
+                        isActive
                           ? 'bg-brand-gold/15 text-brand-navy font-medium'
                           : 'text-gray-600 hover:bg-brand-navy/5'
-                    }`}
-                    title={sidebarCollapsed ? item.label : undefined}
-                  >
-                    <div className="w-5 h-5 flex-shrink-0">{item.icon}</div>
-                    {!sidebarCollapsed && <span>{item.label}</span>}
-                  </Link>
-                );
-              })}
-            </nav>
+                      }`}
+                    >
+                      <div className="w-5 h-5 flex-shrink-0">{item.icon}</div>
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
 
-            <div className={`${sidebarCollapsed ? 'p-2' : 'p-4'} ${!sidebarCollapsed && 'border-t border-gray-100'} transition-all duration-300`}>
-              {!sidebarCollapsed && (
+              <div className="p-4 border-t border-gray-100">
                 <div className="mb-4 p-4 backdrop-blur-xl bg-gray-50 rounded-xl">
                   <div className="text-xs font-light text-gray-500 mb-1">Signed in as</div>
                   <div className="text-sm font-light">{profile?.full_name}</div>
@@ -388,23 +405,16 @@ export default function Layout({ children }: LayoutProps) {
                     {profile?.role.replace('_', ' ')}
                   </div>
                 </div>
-              )}
-              <button
-                onClick={handleSignOut}
-                className={`flex items-center ${
-                  sidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3'
-                } w-full text-sm font-light ${
-                  sidebarCollapsed
-                    ? 'text-white hover:bg-red-800'
-                    : 'text-red-600 hover:bg-red-50'
-                } rounded-xl transition-colors`}
-                title={sidebarCollapsed ? 'Sign Out' : undefined}
-              >
-                <LogOut className="w-5 h-5" strokeWidth={1} />
-                {!sidebarCollapsed && <span>Sign Out</span>}
-              </button>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-3 px-4 py-3 w-full text-sm font-light text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                >
+                  <LogOut className="w-5 h-5" strokeWidth={1} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </aside>
       )}
 

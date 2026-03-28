@@ -23,6 +23,8 @@ export default {
           gold:         '#F5A623',
           'gold-light': '#F7B84B',
         },
+        'sidebar-bg':    '#0d1b2e',
+        'sidebar-hover': '#1a3a6b',
         glass: {
           light: 'rgba(255, 255, 255, 0.7)',
           DEFAULT: 'rgba(255, 255, 255, 0.5)',

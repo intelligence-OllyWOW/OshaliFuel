@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Fuel } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -38,10 +37,11 @@ export default function Login() {
     <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-8">
-          <div className="flex items-center gap-2">
-            <Fuel className="w-8 h-8" strokeWidth={1} />
-            <span className="text-2xl font-light">Oshali Fuel</span>
-          </div>
+          <img
+            src="/oshali-logo.png"
+            alt="Oshali Fuel"
+            className="h-24 w-auto object-contain"
+          />
         </div>
 
         <div className="backdrop-blur-xl bg-glass-light rounded-2xl p-8 shadow-sm border border-gray-100">
