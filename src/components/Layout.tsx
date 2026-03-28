@@ -7,7 +7,6 @@ import {
   FileText,
   Package,
   Receipt,
-  Bell,
   LogOut,
   Menu,
   X,
@@ -23,6 +22,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { UserRole } from '../lib/database.types';
+import { useNotifications } from '../hooks/useNotifications';
+import NotificationDropdown from './NotificationDropdown';
 
 interface LayoutProps {
   children: ReactNode;
@@ -249,11 +250,17 @@ const portalNavItems: Record<string, NavItem[]> = {
 
 export default function Layout({ children }: LayoutProps) {
   const { profile, signOut } = useAuth();
+  const {
+    notifications,
+    unreadCount,
+    loading: notifLoading,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications(profile?.id ?? null);
   const { isTestingMode } = useTestingMode();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   const getSelectedPortalFromPath = (): UserRole | 'super_admin_portal' => {
@@ -447,13 +454,13 @@ export default function Layout({ children }: LayoutProps) {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="relative p-2 hover:bg-gray-50 rounded-full transition-colors"
-              >
-                <Bell className="w-5 h-5" strokeWidth={1} />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              <NotificationDropdown
+                notifications={notifications}
+                unreadCount={unreadCount}
+                loading={notifLoading}
+                markAsRead={markAsRead}
+                markAllAsRead={markAllAsRead}
+              />
             </div>
 
             {selectedPortal !== 'super_admin_portal' && (
@@ -506,13 +513,13 @@ export default function Layout({ children }: LayoutProps) {
                 )}
               </div>
 
-              <button
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="relative p-2 hover:bg-gray-50 rounded-full transition-colors"
-              >
-                <Bell className="w-5 h-5" strokeWidth={1} />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              <NotificationDropdown
+                notifications={notifications}
+                unreadCount={unreadCount}
+                loading={notifLoading}
+                markAsRead={markAsRead}
+                markAllAsRead={markAllAsRead}
+              />
             </div>
           </header>
         )}

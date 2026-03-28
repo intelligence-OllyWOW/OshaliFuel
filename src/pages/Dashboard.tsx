@@ -424,7 +424,7 @@ export default function Dashboard() {
                 </div>
               </Card>
             </Link>
-            {/* TODO: Notifications page not built yet — bug report item #11 */}
+            {/* TODO: Notifications now available via bell dropdown — this button can be removed or linked to a future /notifications page */}
             <div className="block opacity-50 cursor-not-allowed">
               <Card className="border-2 border-sidebar-bg">
                 <div className="flex items-center gap-3">
