@@ -5,7 +5,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
-import { FileText, Plus, Eye, Camera, X, Printer } from 'lucide-react';
+import { FileText, Plus, Eye, Camera, X, Printer, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { printDeliveryNote } from '../../lib/printDeliveryNote';
@@ -64,7 +64,7 @@ export default function AttendantPortal() {
   async function loadVehicles(clientId: string) {
     try {
       const { data } = await supabase
-        .from('vehicles')
+        .from('client_vehicles')
         .select('*')
         .eq('client_id', clientId)
         .order('registration_number');
@@ -218,44 +218,59 @@ export default function AttendantPortal() {
   if (loading) return <OshaliLoader variant="fullscreen" />;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-        <div className="p-4">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-4">Delivery Notes</h1>
-          <div className="flex gap-3">
-            <Button
-              variant={view === 'create' ? 'primary' : 'secondary'}
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+        <div className="px-4 pt-4 pb-3 max-w-xl mx-auto">
+          <div className="mb-3">
+            <div className="text-2xl font-extrabold text-[#F5A623] tracking-tight">OshaliFuel</div>
+            <h1 className="text-xl font-semibold text-[#1B2D5B]">Delivery Notes</h1>
+            {profile?.full_name && (
+              <p className="text-sm text-gray-400 mt-0.5">{profile.full_name}</p>
+            )}
+          </div>
+          {/* iOS segmented tab control */}
+          <div className="bg-gray-100 rounded-2xl p-1 flex">
+            <button
+              type="button"
               onClick={() => setView('create')}
-              className="flex-1 py-3"
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                view === 'create'
+                  ? 'bg-white text-[#1B2D5B] shadow-sm'
+                  : 'text-gray-500'
+              }`}
             >
-              <Plus className="w-5 h-5 mr-2" strokeWidth={2} />
-              Create
-            </Button>
-            <Button
-              variant={view === 'list' ? 'primary' : 'secondary'}
+              <Plus className="w-4 h-4" strokeWidth={2} /> Create
+            </button>
+            <button
+              type="button"
               onClick={() => setView('list')}
-              className="flex-1 py-3"
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                view === 'list'
+                  ? 'bg-white text-[#1B2D5B] shadow-sm'
+                  : 'text-gray-500'
+              }`}
             >
-              <Eye className="w-5 h-5 mr-2" strokeWidth={2} />
-              View All
-            </Button>
+              <Eye className="w-4 h-4" strokeWidth={2} /> View All
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="p-6 max-w-2xl mx-auto">
+      <div className="px-4 py-5 max-w-xl mx-auto">
+        {/* Feedback banner */}
         {feedback && (
-          <div className={`mb-4 p-4 rounded-xl border ${
+          <div className={`mb-4 p-4 rounded-2xl ${
             feedback.type === 'success'
-              ? 'bg-green-50 border-green-200 text-green-800'
-              : 'bg-red-50 border-red-200 text-red-800'
+              ? 'bg-green-50 text-green-800'
+              : 'bg-red-50 text-red-800'
           }`}>
-            <p className="font-medium">{feedback.message}</p>
+            <p className="text-sm font-medium">{feedback.message}</p>
           </div>
         )}
 
         {view === 'create' ? (
-          <Card className="relative">
+          <div className="relative">
             {creating && <OshaliLoader variant="overlay" message="Creating delivery note..." />}
             <form
               id="delivery-form"
@@ -265,125 +280,146 @@ export default function AttendantPortal() {
               }}
               className="space-y-5"
             >
-              <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
-                <input
-                  type="checkbox"
-                  id="customCustomer"
-                  checked={customCustomer}
-                  onChange={(e) => {
-                    setCustomCustomer(e.target.checked);
-                    setSelectedClient('');
-                  }}
-                  className="w-5 h-5 rounded border-gray-400"
-                />
-                <label htmlFor="customCustomer" className="font-medium text-gray-800 text-base">
-                  Custom Customer (not in list)
+              {/* CUSTOMER section */}
+              <div>
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Customer</div>
+                {/* Custom customer toggle */}
+                <label htmlFor="customCustomer" className="flex items-center gap-3 py-3 cursor-pointer mb-3">
+                  <input
+                    type="checkbox"
+                    id="customCustomer"
+                    checked={customCustomer}
+                    onChange={(e) => {
+                      setCustomCustomer(e.target.checked);
+                      setSelectedClient('');
+                    }}
+                    className="w-5 h-5 rounded border-gray-300 accent-[#F5A623]"
+                  />
+                  <span className="text-sm text-gray-600">Custom customer (not in list)</span>
                 </label>
-              </div>
-
-              {customCustomer ? (
-                <Input
-                  name="customCustomerName"
-                  label="Customer Name"
-                  placeholder="Enter customer name"
-                  required
-                  className="text-base"
-                />
-              ) : (
-                <Select
-                  name="clientId"
-                  label="Customer"
-                  value={selectedClient}
-                  onChange={(e) => setSelectedClient(e.target.value)}
-                  required
-                  className="text-base"
-                >
-                  <option value="">Select customer...</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
-                  ))}
-                </Select>
-              )}
-
-              {!customCustomer && vehicles.length > 0 && (
-                <Select name="vehicleId" label="Vehicle (Optional)" className="text-base">
-                  <option value="">Select vehicle or enter manually...</option>
-                  {vehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.registration_number} - {vehicle.make || 'N/A'}
-                    </option>
-                  ))}
-                </Select>
-              )}
-
-              <Input
-                name="vehicleRegistration"
-                label="Registration No."
-                placeholder="Enter vehicle reg no."
-                required
-                className="text-base"
-              />
-
-              <Input
-                name="driverName"
-                label="Driver Name"
-                placeholder="Enter driver name"
-                required
-                className="text-base"
-              />
-
-              <div className="border-t border-gray-200 pt-5 mt-5">
-                <h3 className="text-sm font-semibold text-gray-700 mb-4">Meter Readings</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    name="meterA"
-                    label="Meter A"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={meterA}
-                    onChange={(e) => setMeterA(e.target.value)}
+                {/* Customer name or select */}
+                {customCustomer ? (
+                  <input
+                    name="customCustomerName"
+                    type="text"
+                    placeholder="Customer name"
                     required
-                    className="text-base"
+                    className="w-full px-4 py-4 text-base rounded-2xl border border-gray-200 bg-white outline-none focus:border-[#1B2D5B] focus:ring-2 focus:ring-[#1B2D5B]/10 placeholder:text-gray-400 text-gray-900 min-h-[56px]"
                   />
-                  <Input
-                    name="meterB"
-                    label="Meter B"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={meterB}
-                    onChange={(e) => setMeterB(e.target.value)}
-                    required
-                    className="text-base"
-                  />
-                </div>
-
-                {(meterA || meterB) && (
-                  <div className="mt-4 p-4 bg-blue-50 border border-blue-300 rounded-lg">
-                    <div className="text-sm font-medium text-blue-700">Calculated Litres (Meter B - Meter A):</div>
-                    <div className="text-3xl font-bold text-blue-900">{calculateLitres().toFixed(2)} L</div>
+                ) : (
+                  <div className="relative">
+                    <select
+                      name="clientId"
+                      value={selectedClient}
+                      onChange={(e) => setSelectedClient(e.target.value)}
+                      required
+                      className="w-full px-4 py-4 text-base rounded-2xl border border-gray-200 bg-white outline-none appearance-none focus:border-[#1B2D5B] focus:ring-2 focus:ring-[#1B2D5B]/10 text-gray-900 min-h-[56px]"
+                    >
+                      <option value="">Select customer...</option>
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" strokeWidth={2} />
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-gray-200 pt-5 mt-5">
-                <Input
-                  name="litresReading"
-                  label="Liter Reading"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
+              {/* VEHICLE & DRIVER section */}
+              <div className="space-y-3">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Vehicle & Driver</div>
+                {!customCustomer && vehicles.length > 0 && (
+                  <div className="relative">
+                    <select
+                      name="vehicleId"
+                      className="w-full px-4 py-4 text-base rounded-2xl border border-gray-200 bg-white outline-none appearance-none focus:border-[#1B2D5B] focus:ring-2 focus:ring-[#1B2D5B]/10 text-gray-900 min-h-[56px]"
+                    >
+                      <option value="">Select vehicle (optional)...</option>
+                      {vehicles.map((vehicle) => (
+                        <option key={vehicle.id} value={vehicle.id}>
+                          {vehicle.registration_number} - {vehicle.make || 'N/A'}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" strokeWidth={2} />
+                  </div>
+                )}
+                <input
+                  name="vehicleRegistration"
+                  type="text"
+                  placeholder="Registration number"
                   required
-                  className="text-base"
+                  className="w-full px-4 py-4 text-base rounded-2xl border border-gray-200 bg-white outline-none focus:border-[#1B2D5B] focus:ring-2 focus:ring-[#1B2D5B]/10 placeholder:text-gray-400 text-gray-900 min-h-[56px]"
                 />
-                <p className="text-sm font-medium text-gray-600 mt-1">Enter the liter reading from the pump meter</p>
+                <input
+                  name="driverName"
+                  type="text"
+                  placeholder="Driver name"
+                  required
+                  className="w-full px-4 py-4 text-base rounded-2xl border border-gray-200 bg-white outline-none focus:border-[#1B2D5B] focus:ring-2 focus:ring-[#1B2D5B]/10 placeholder:text-gray-400 text-gray-900 min-h-[56px]"
+                />
               </div>
 
-              <div className="border-t border-gray-200 pt-5 mt-5">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Meter Photo</h3>
+              {/* METER READINGS section */}
+              <div>
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Meter Readings</div>
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="grid grid-cols-2 divide-x divide-gray-200">
+                    <div className="p-5">
+                      <div className="text-xs text-gray-400 mb-1 uppercase tracking-wider">Meter A</div>
+                      <input
+                        name="meterA"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={meterA}
+                        onChange={(e) => setMeterA(e.target.value)}
+                        required
+                        className="w-full text-3xl font-bold text-[#1B2D5B] bg-transparent outline-none placeholder:text-gray-300"
+                      />
+                    </div>
+                    <div className="p-5">
+                      <div className="text-xs text-gray-400 mb-1 uppercase tracking-wider">Meter B</div>
+                      <input
+                        name="meterB"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={meterB}
+                        onChange={(e) => setMeterB(e.target.value)}
+                        required
+                        className="w-full text-3xl font-bold text-[#1B2D5B] bg-transparent outline-none placeholder:text-gray-300"
+                      />
+                    </div>
+                  </div>
+                  {(meterA || meterB) && (
+                    <div className="text-center py-4 border-t border-gray-200">
+                      <div className="text-3xl font-bold text-[#1B2D5B]">{calculateLitres().toFixed(2)}</div>
+                      <div className="text-xs text-gray-400 mt-0.5 uppercase tracking-wider">Litres dispensed</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* LITER READING section */}
+              <div>
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Liter Reading</div>
+                <input
+                  name="litresReading"
+                  type="number"
+                  step="0.01"
+                  placeholder="Pump meter reading"
+                  required
+                  className="w-full px-4 py-4 text-base rounded-2xl border border-gray-200 bg-white outline-none focus:border-[#1B2D5B] focus:ring-2 focus:ring-[#1B2D5B]/10 placeholder:text-gray-400 text-gray-900 min-h-[56px]"
+                />
+                <p className="text-xs text-gray-400 mt-1.5 px-1">Reading from the pump meter</p>
+              </div>
+
+              {/* METER PHOTO section */}
+              <div>
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Meter Photo</div>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -392,18 +428,17 @@ export default function AttendantPortal() {
                   onChange={handlePhotoCapture}
                   className="hidden"
                 />
-
                 {meterPhotoPreview ? (
                   <div className="relative">
                     <img
                       src={meterPhotoPreview}
                       alt="Meter reading"
-                      className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                      className="w-full h-48 object-cover rounded-2xl"
                     />
                     <button
                       type="button"
                       onClick={removePhoto}
-                      className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                      className="absolute top-3 right-3 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-colors"
                     >
                       <X className="w-5 h-5" strokeWidth={2} />
                     </button>
@@ -412,110 +447,103 @@ export default function AttendantPortal() {
                   <button
                     type="button"
                     onClick={handleCameraClick}
-                    className="w-full py-5 border-2 border-dashed border-gray-400 rounded-lg hover:border-gray-600 transition-colors flex flex-col items-center justify-center gap-2 text-gray-700 hover:text-gray-900 bg-gray-50 hover:bg-gray-100"
+                    className="w-full min-h-[120px] border-2 border-dashed border-gray-300 rounded-2xl hover:border-[#F5A623] transition-colors flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-[#F5A623] bg-white"
                   >
-                    <Camera className="w-8 h-8" strokeWidth={2} />
-                    <span className="font-semibold text-base">Take Photo of Meter</span>
+                    <Camera className="w-8 h-8" strokeWidth={1.5} />
+                    <span className="text-sm font-medium">Tap to capture meter photo</span>
                   </button>
                 )}
               </div>
 
-              <div className="bg-gray-100 rounded-lg p-4 border border-gray-300">
-                <div className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-0.5">Attendant</div>
-                <div className="font-semibold text-gray-900 text-lg">{profile?.full_name}</div>
-              </div>
-
+              {/* Submit */}
               <button
                 type="submit"
                 disabled={creating}
-                className="w-full py-4 text-base rounded-xl font-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-[#F5A623] text-white hover:bg-[#e09610]"
+                className="w-full py-4 text-base font-semibold rounded-2xl shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-[#F5A623] text-white hover:bg-[#e09610]"
               >
                 {creating ? 'Creating...' : 'Create Delivery Note'}
               </button>
             </form>
-          </Card>
+          </div>
         ) : (
           <div className="space-y-4">
             {deliveryNotes.length === 0 ? (
-              <Card>
-                <div className="text-center py-12 text-gray-500">
-                  <FileText className="w-16 h-16 mx-auto mb-4 opacity-40" strokeWidth={1.5} />
-                  <p className="text-lg font-medium">No delivery notes yet</p>
-                </div>
-              </Card>
+              <div className="text-center py-20">
+                <FileText className="w-14 h-14 mx-auto mb-4 text-gray-300" strokeWidth={1} />
+                <p className="text-lg font-semibold text-gray-500">No delivery notes yet</p>
+                <p className="text-sm text-gray-400 mt-1">Delivery notes you create will appear here</p>
+              </div>
             ) : (
               <>
-              {(showAll ? deliveryNotes : deliveryNotes.slice(0, 5)).map((note) => (
-                <Card key={note.id}>
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
+                {(showAll ? deliveryNotes : deliveryNotes.slice(0, 5)).map((note) => (
+                  <div key={note.id} className="bg-white rounded-2xl shadow-sm p-5">
+                    <div className="flex items-start justify-between mb-3">
                       <div>
-                        <div className="font-medium text-xs text-gray-500 mb-1 uppercase tracking-wide">{note.note_number}</div>
-                        <div className="font-semibold text-gray-900 text-xl">{note.customer_name}</div>
+                        <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0.5">{note.note_number}</div>
+                        <div className="text-base font-semibold text-[#1B2D5B]">{note.customer_name}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Litres</div>
-                        <div className="font-bold text-2xl text-blue-700">{note.litres_dispensed} L</div>
+                        <div className="text-2xl font-bold text-[#1B2D5B]">{note.litres_dispensed}</div>
+                        <div className="text-xs text-gray-400">litres</div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200">
+                    <div className="grid grid-cols-2 gap-3 py-3 border-t border-gray-100">
                       <div>
-                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Registration</div>
-                        <div className="font-semibold text-gray-900">{note.vehicle_registration}</div>
+                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Registration</div>
+                        <div className="text-sm font-semibold text-gray-800">{note.vehicle_registration}</div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Driver</div>
-                        <div className="font-semibold text-gray-900">{note.driver_name}</div>
+                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Driver</div>
+                        <div className="text-sm font-semibold text-gray-800">{note.driver_name}</div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Meter A</div>
-                        <div className="font-semibold text-gray-800">{note.meter_reading_a}</div>
+                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Meter A</div>
+                        <div className="text-sm font-semibold text-gray-800">{note.meter_reading_a}</div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Meter B</div>
-                        <div className="font-semibold text-gray-800">{note.meter_reading_b}</div>
+                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Meter B</div>
+                        <div className="text-sm font-semibold text-gray-800">{note.meter_reading_b}</div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Liter Reading</div>
-                        <div className="font-semibold text-gray-800">{note.litres_reading || 0} L</div>
+                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Liter Reading</div>
+                        <div className="text-sm font-semibold text-gray-800">{note.litres_reading || 0} L</div>
                       </div>
                     </div>
                     {note.meter_photo_url && (
-                      <div className="pt-3 border-t border-gray-200">
-                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Meter Photo</div>
+                      <div className="pt-3 border-t border-gray-100">
+                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Meter Photo</div>
                         <img
                           src={note.meter_photo_url}
                           alt="Meter reading"
-                          className="w-full h-40 object-cover rounded-lg border border-gray-200"
+                          className="w-full h-40 object-cover rounded-xl"
                         />
                       </div>
                     )}
-                    <div className="pt-3 border-t border-gray-200 flex items-center justify-between">
-                      <span className="text-sm font-semibold text-gray-700">{note.attendant_name}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-gray-500">{format(new Date(note.created_at), 'MMM dd, HH:mm')}</span>
-                        <button
-                          type="button"
-                          onClick={() => printDeliveryNote(note)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 hover:text-gray-900 transition-colors"
-                        >
-                          <Printer className="w-4 h-4" strokeWidth={2} />
-                          Print
-                        </button>
+                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-gray-700">{note.attendant_name}</div>
+                        <div className="text-xs text-gray-400">{format(new Date(note.created_at), 'MMM dd, HH:mm')}</div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => printDeliveryNote(note)}
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-full border border-[#F5A623] text-[#F5A623] hover:bg-amber-50 transition-colors"
+                      >
+                        <Printer className="w-4 h-4" strokeWidth={2} />
+                        Print
+                      </button>
                     </div>
                   </div>
-                </Card>
-              ))}
-              {!showAll && deliveryNotes.length > 5 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAll(true)}
-                  className="w-full py-3 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  Show all {deliveryNotes.length} notes
-                </button>
-              )}
+                ))}
+                {!showAll && deliveryNotes.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAll(true)}
+                    className="w-full py-3 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Show all {deliveryNotes.length} notes
+                  </button>
+                )}
               </>
             )}
           </div>
