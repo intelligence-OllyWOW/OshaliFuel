@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import OshaliLoader from './OshaliLoader';
 import { useTestingMode } from '../contexts/TestingModeContext';
 import Card from './ui/Card';
 import Button from './ui/Button';
@@ -382,13 +383,7 @@ export default function DeliveryNotesAndInvoices() {
     inv.client?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  if (loading) return <OshaliLoader variant="inline" />;
 
   return (
     <div className="space-y-6">
@@ -563,6 +558,8 @@ export default function DeliveryNotesAndInvoices() {
       {/* Create Invoice Modal */}
       {showInvoiceModal && selectedDeliveryNote && (
         <Modal onClose={() => setShowInvoiceModal(false)} title="Create Invoice">
+          <div className="relative">
+            {submitting && <OshaliLoader variant="overlay" message="Creating invoice..." />}
           <div className="space-y-4">
             <div>
               <p className="text-sm font-medium text-gray-700 mb-2">Delivery Note</p>
@@ -626,6 +623,7 @@ export default function DeliveryNotesAndInvoices() {
                 {submitting ? 'Creating...' : 'Create Invoice'}
               </Button>
             </div>
+          </div>
           </div>
         </Modal>
       )}

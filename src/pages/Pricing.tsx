@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import OshaliLoader from '../components/OshaliLoader';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -70,9 +71,7 @@ export default function Pricing() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-        </div>
+        <OshaliLoader variant="inline" />
       ) : (
         <>
           {currentPrice && (

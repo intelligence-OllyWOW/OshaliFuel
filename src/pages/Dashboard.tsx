@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import OshaliLoader from '../components/OshaliLoader';
 import Card from '../components/ui/Card';
 import TankVisualization from '../components/TankVisualization';
 import Analytics from '../components/Analytics';
@@ -339,9 +340,7 @@ export default function Dashboard() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-        </div>
+        <OshaliLoader variant="inline" />
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

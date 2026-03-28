@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import OshaliLoader from './OshaliLoader';
 import { supabase } from '../lib/supabase';
 import { format, startOfYear, endOfYear, startOfMonth, endOfMonth } from 'date-fns';
 import Card from './ui/Card';
@@ -227,9 +228,7 @@ export default function Analytics() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-          </div>
+          <OshaliLoader variant="inline" />
         ) : comparisonData.length === 0 ? (
           <div className="text-center py-12 text-sm font-light text-gray-400">
             No data available for the selected period

@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { TestingModeProvider } from './contexts/TestingModeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import OshaliLoader from './components/OshaliLoader';
 import Login from './pages/Login';
 import Setup from './pages/Setup';
 import DashboardRouter from './pages/DashboardRouter';
@@ -20,13 +21,14 @@ import AttendantPortal from './pages/portals/AttendantPortal';
 import Settings from './pages/Settings';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 
-function App() {
+function AppContent() {
+  const { loading } = useAuth();
+  if (loading) return <OshaliLoader variant="fullscreen" message="Starting up..." />;
+
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <TestingModeProvider>
-        <PWAUpdatePrompt />
-        <Routes>
+    <TestingModeProvider>
+      <PWAUpdatePrompt />
+      <Routes>
           <Route path="/setup" element={<Setup />} />
           <Route path="/login" element={<Login />} />
           <Route
@@ -161,7 +163,15 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        </TestingModeProvider>
+    </TestingModeProvider>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppContent />
       </AuthProvider>
     </BrowserRouter>
   );

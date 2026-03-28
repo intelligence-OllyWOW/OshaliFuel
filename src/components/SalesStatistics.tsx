@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import OshaliLoader from './OshaliLoader';
 import Card from './ui/Card';
 import Select from './ui/Select';
 import { supabase } from '../lib/supabase';
@@ -208,13 +209,7 @@ export default function SalesStatistics() {
 
   const maxDailyRevenue = Math.max(...stats.dailyData.map(d => d.revenue), 1);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  if (loading) return <OshaliLoader variant="inline" />;
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import OshaliLoader from '../components/OshaliLoader';
 import { useTestingMode } from '../contexts/TestingModeContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -288,13 +289,7 @@ export default function Clients() {
   }
 
   if (loading) {
-    return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-        </div>
-      </div>
-    );
+    return <OshaliLoader variant="fullscreen" />;
   }
 
   const viewingClient = viewingClientId ? clients.find(c => c.id === viewingClientId) : null;

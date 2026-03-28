@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import OshaliLoader from '../components/OshaliLoader';
 import { useTestingMode } from '../contexts/TestingModeContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -535,9 +536,7 @@ export default function Procurement() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-        </div>
+        <OshaliLoader variant="inline" />
       ) : (
         <div className="space-y-4">
           {activeTab === 'pr' && prs.map((pr) => (
@@ -951,7 +950,9 @@ export default function Procurement() {
 
       <Modal isOpen={showPOModal && !!selectedPR} onClose={() => { setShowPOModal(false); setSelectedPR(null); setUploadedFile(null); setSelectedSupplierId(''); setUseNewSupplier(false); }} title="Create Purchase Order">
         {selectedPR && (
-          <form onSubmit={(e) => { e.preventDefault(); handleCreatePO(selectedPR, new FormData(e.currentTarget)); }}>
+          <div className="relative">
+            {uploading && <OshaliLoader variant="overlay" message="Creating purchase order..." />}
+            <form onSubmit={(e) => { e.preventDefault(); handleCreatePO(selectedPR, new FormData(e.currentTarget)); }}>
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
                 <button
@@ -1067,12 +1068,15 @@ export default function Procurement() {
               </div>
             </div>
           </form>
+          </div>
         )}
       </Modal>
 
       <Modal isOpen={showGRModal && !!selectedPO && !showViewPOModal} onClose={() => { setShowGRModal(false); setSelectedPO(null); }} title="Create Goods Received">
         {selectedPO && (
-          <form onSubmit={(e) => { e.preventDefault(); handleCreateGR(selectedPO, new FormData(e.currentTarget)); }}>
+          <div className="relative">
+            {submitting && <OshaliLoader variant="overlay" message="Uploading document..." />}
+            <form onSubmit={(e) => { e.preventDefault(); handleCreateGR(selectedPO, new FormData(e.currentTarget)); }}>
             <div className="space-y-4">
               <Input name="liters" label="Liters Received" type="number" step="0.01" defaultValue={selectedPO.liters_ordered} required />
               <Input name="date" label="Receipt Date" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
@@ -1086,6 +1090,7 @@ export default function Procurement() {
               </div>
             </div>
           </form>
+          </div>
         )}
       </Modal>
 
@@ -1101,6 +1106,8 @@ export default function Procurement() {
         title="Allocate to Tank"
       >
         {selectedGR && (
+          <div className="relative">
+            {submitting && <OshaliLoader variant="overlay" message="Submitting requisition..." />}
           <div className="space-y-4">
             <div className="bg-gray-50 p-4 rounded-lg space-y-2 font-light">
               <div className="flex justify-between">
@@ -1263,6 +1270,7 @@ export default function Procurement() {
                 Cancel
               </Button>
             </div>
+          </div>
           </div>
         )}
       </Modal>

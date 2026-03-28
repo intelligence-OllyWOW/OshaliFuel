@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import OshaliLoader from '../components/OshaliLoader';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -183,9 +184,7 @@ export default function Users() {
           </div>
 
           {clientsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-6 h-6 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-            </div>
+            <OshaliLoader variant="inline" />
           ) : topClients.length === 0 ? (
             <div className="text-center py-8 text-sm font-light text-gray-400">
               No client data available
@@ -226,9 +225,7 @@ export default function Users() {
       <h2 className="text-xl font-light mb-4">User Management</h2>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-        </div>
+        <OshaliLoader variant="inline" />
       ) : (
         <div className="space-y-3">
           {users.map((user) => (
@@ -258,7 +255,9 @@ export default function Users() {
       )}
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add New User">
-        <form onSubmit={(e) => { e.preventDefault(); handleCreateUser(new FormData(e.currentTarget)); }}>
+        <div className="relative">
+          {creating && <OshaliLoader variant="overlay" message="Creating user..." />}
+          <form onSubmit={(e) => { e.preventDefault(); handleCreateUser(new FormData(e.currentTarget)); }}>
           <div className="space-y-4">
             <Input name="fullName" label="Full Name" required />
             <Input name="email" label="Email" type="email" required />
@@ -283,6 +282,7 @@ export default function Users() {
             </div>
           </div>
         </form>
+        </div>
       </Modal>
     </div>
   );

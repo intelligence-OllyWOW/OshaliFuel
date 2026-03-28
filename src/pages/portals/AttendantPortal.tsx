@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import OshaliLoader from '../../components/OshaliLoader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -213,13 +214,7 @@ export default function AttendantPortal() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  if (loading) return <OshaliLoader variant="fullscreen" />;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -259,7 +254,8 @@ export default function AttendantPortal() {
         )}
 
         {view === 'create' ? (
-          <Card>
+          <Card className="relative">
+            {creating && <OshaliLoader variant="overlay" message="Creating delivery note..." />}
             <form
               id="delivery-form"
               onSubmit={(e) => {

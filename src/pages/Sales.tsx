@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import OshaliLoader from '../components/OshaliLoader';
 import { useTestingMode } from '../contexts/TestingModeContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -887,9 +888,7 @@ export default function Sales() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-        </div>
+        <OshaliLoader variant="inline" />
       ) : (
         <div className="space-y-4">
           {filteredInvoices.length === 0 && searchQuery && (
@@ -1042,6 +1041,8 @@ export default function Sales() {
         size="lg"
       >
         {selectedDeliveryNote ? (
+          <div className="relative">
+            {submitting && <OshaliLoader variant="overlay" message="Creating invoice..." />}
           <form onSubmit={(e) => {
             e.preventDefault();
             const formData = new FormData(e.currentTarget);
@@ -1106,7 +1107,10 @@ export default function Sales() {
               </div>
             </div>
           </form>
+          </div>
         ) : (
+          <div className="relative">
+            {submitting && <OshaliLoader variant="overlay" message="Creating invoice..." />}
           <form onSubmit={(e) => { e.preventDefault(); handleCreateInvoice(new FormData(e.currentTarget)); }}>
           <div className="space-y-4">
             <Input name="deliveryNote" label="Delivery Note Number" required />
@@ -1198,6 +1202,7 @@ export default function Sales() {
             </div>
           </div>
         </form>
+          </div>
         )}
       </Modal>
 

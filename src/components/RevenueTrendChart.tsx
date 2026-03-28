@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import OshaliLoader from './OshaliLoader';
 import { TrendingUp } from 'lucide-react';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -183,9 +184,7 @@ export default function RevenueTrendChart() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-          </div>
+          <OshaliLoader variant="inline" />
         ) : dateRangeRevenueData.length === 0 ? (
           <div className="text-center py-12 text-sm font-light text-gray-400">
             No data available for the selected period
