@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import OshaliLoader from '../components/OshaliLoader';
 import { useTestingMode } from '../contexts/TestingModeContext';
@@ -9,7 +10,7 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import { Plus, Eye, Download, CheckCircle, Upload, FileText as FileIcon, Package, Trash2, Split } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { formatCurrency, generatePRNumber, generatePONumber, generateGRNumber } from '../lib/utils';
+import { formatCurrency, generatePONumber } from '../lib/utils';
 import { format } from 'date-fns';
 import type { Database } from '../lib/database.types';
 
@@ -22,7 +23,10 @@ type Supplier = Database['public']['Tables']['suppliers']['Row'];
 export default function Procurement() {
   const { profile } = useAuth();
   const { isTestingMode } = useTestingMode();
-  const [activeTab, setActiveTab] = useState<'pr' | 'po' | 'gr'>('pr');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'pr' | 'po' | 'gr'>(
+    (searchParams.get('tab') as 'pr' | 'po' | 'gr') || 'pr'
+  );
   const [prs, setPrs] = useState<PR[]>([]);
   const [pos, setPos] = useState<PO[]>([]);
   const [grs, setGrs] = useState<GR[]>([]);
@@ -140,8 +144,12 @@ export default function Procurement() {
   async function handleCreatePR(formData: FormData) {
     if (!profile) return;
 
+    const { data: prNumberData, error: prNumberError } = await supabase.rpc('generate_pr_number');
+    if (prNumberError) throw prNumberError;
+    const prNumber = prNumberData as string;
+
     const pr = {
-      pr_number: generatePRNumber(),
+      pr_number: prNumber,
       liters_requested: parseFloat(formData.get('liters') as string),
       requisition_date: formData.get('date') as string,
       price_per_liter: parseFloat(formData.get('price') as string),
@@ -233,8 +241,12 @@ export default function Procurement() {
         supplierId = newSupplier.id;
       }
 
+      const { data: poNumberData, error: poNumberError } = await supabase.rpc('generate_po_number');
+      if (poNumberError) throw poNumberError;
+      const poNumber = poNumberData as string;
+
       const po = {
-        po_number: generatePONumber(),
+        po_number: poNumber,
         pr_id: pr.id,
         liters_ordered: parseFloat(formData.get('liters') as string),
         price_per_liter: parseFloat(formData.get('price') as string),
@@ -280,42 +292,25 @@ export default function Procurement() {
       const litersReceived = parseFloat(formData.get('liters') as string);
       const receiptDate = formData.get('date') as string;
 
-      let grResult = null;
-      let grNumber = '';
-      let attempts = 0;
-      const maxAttempts = 3;
+      const { data: grNumberData, error: grNumberError } = await supabase.rpc('generate_gr_number');
+      if (grNumberError) throw grNumberError;
+      const grNumber = grNumberData as string;
 
-      while (attempts < maxAttempts) {
-        grNumber = generateGRNumber();
-        const gr = {
-          gr_number: grNumber,
-          po_id: po.id,
-          liters_received: litersReceived,
-          receipt_date: receiptDate,
-          cost_per_liter: po.price_per_liter,
-          status: 'received' as const,
-          created_by: profile.id,
-          is_test_data: isTestingMode,
-        };
+      const gr = {
+        gr_number: grNumber,
+        po_id: po.id,
+        liters_received: litersReceived,
+        receipt_date: receiptDate,
+        cost_per_liter: po.price_per_liter,
+        status: 'received' as const,
+        created_by: profile.id,
+        is_test_data: isTestingMode,
+      };
 
-        const result = await supabase.from('goods_received').insert([gr]).select().single();
+      const grResult = await supabase.from('goods_received').insert([gr]).select().single();
 
-        if (!result.error) {
-          grResult = result;
-          break;
-        }
-
-        if (result.error.code === '23505') {
-          attempts++;
-          continue;
-        }
-
+      if (grResult.error) {
         alert('Error creating GR');
-        return;
-      }
-
-      if (!grResult || !grResult.data) {
-        alert('Unable to generate unique GR number. Please try again.');
         return;
       }
 
@@ -523,7 +518,7 @@ export default function Procurement() {
         {(['pr', 'po', 'gr'] as const).map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => { setActiveTab(tab); setSearchParams({ tab }); }}
             className={`px-4 py-2 text-sm font-light border-b-2 transition-colors ${
               activeTab === tab
                 ? 'border-black text-black'

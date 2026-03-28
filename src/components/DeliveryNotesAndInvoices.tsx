@@ -9,7 +9,7 @@ import Input from './ui/Input';
 import Select from './ui/Select';
 import { FileText, Printer, Download, Plus, Eye, Search, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { formatCurrency, generateInvoiceNumber } from '../lib/utils';
+import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
 import { printDeliveryNote } from '../lib/printDeliveryNote';
 import { printInvoice } from '../lib/printInvoice';
@@ -191,13 +191,14 @@ export default function DeliveryNotesAndInvoices() {
         return;
       }
 
-      let invoiceData = null;
-      let attempts = 0;
-      const maxAttempts = 3;
+      const { data: invoiceNumberData, error: invoiceNumberError } = await supabase.rpc('generate_invoice_number');
+      if (invoiceNumberError) throw invoiceNumberError;
+      const invoiceNumber = invoiceNumberData as string;
 
-      while (attempts < maxAttempts) {
-        const invoice = {
-          invoice_number: generateInvoiceNumber(),
+      const invoiceResult = await supabase
+        .from('invoices')
+        .insert([{
+          invoice_number: invoiceNumber,
           delivery_note_number: selectedDeliveryNote.note_number,
           client_id: clientId,
           vehicle_id: null,
@@ -210,31 +211,13 @@ export default function DeliveryNotesAndInvoices() {
           status: 'unsettled',
           created_by: profile.id,
           is_test_data: isTestingMode,
-        };
+        }])
+        .select()
+        .single();
 
-        const result = await supabase
-          .from('invoices')
-          .insert([invoice])
-          .select()
-          .single();
+      if (invoiceResult.error) throw invoiceResult.error;
 
-        if (!result.error) {
-          invoiceData = result.data;
-          break;
-        }
-
-        if (result.error?.code === '23505') {
-          attempts++;
-          continue;
-        }
-
-        throw result.error;
-      }
-
-      if (!invoiceData) {
-        setFeedback({ type: 'error', message: 'Unable to generate unique invoice number' });
-        return;
-      }
+      const invoiceData = invoiceResult.data;
 
       let remainingToSell = litersSold;
       const lineItems = [];

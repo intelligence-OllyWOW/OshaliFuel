@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import OshaliLoader from '../components/OshaliLoader';
 import { useTestingMode } from '../contexts/TestingModeContext';
@@ -10,7 +11,7 @@ import Select from '../components/ui/Select';
 import { Plus, Eye, Download, CheckCircle, XCircle, Clock, CreditCard, Banknote, Building2, Search, BarChart3, FileText, Truck, Bell, Printer } from 'lucide-react';
 import SalesStatistics from '../components/SalesStatistics';
 import { supabase } from '../lib/supabase';
-import { formatCurrency, generateInvoiceNumber } from '../lib/utils';
+import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import { printDeliveryNote } from '../lib/printDeliveryNote';
@@ -135,7 +136,10 @@ export default function Sales() {
     payment_method: '',
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'invoices' | 'statistics' | 'delivery_notes'>('invoices');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'invoices' | 'statistics' | 'delivery_notes'>(
+    (searchParams.get('tab') as 'invoices' | 'statistics' | 'delivery_notes') || 'invoices'
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG);
@@ -350,13 +354,14 @@ export default function Sales() {
         return;
       }
 
-      let invoiceData = null;
-      let attempts = 0;
-      const maxAttempts = 3;
+      const { data: invoiceNumberData, error: invoiceNumberError } = await supabase.rpc('generate_invoice_number');
+      if (invoiceNumberError) throw invoiceNumberError;
+      const invoiceNumber = invoiceNumberData as string;
 
-      while (attempts < maxAttempts) {
-        const invoice = {
-          invoice_number: generateInvoiceNumber(),
+      const invoiceResult = await supabase
+        .from('invoices')
+        .insert([{
+          invoice_number: invoiceNumber,
           delivery_note_number: deliveryNote.note_number,
           client_id: clientId,
           vehicle_id: null,
@@ -369,32 +374,16 @@ export default function Sales() {
           status: 'unsettled',
           created_by: profile.id,
           is_test_data: isTestingMode,
-        };
+        }])
+        .select()
+        .single();
 
-        const result = await supabase
-          .from('invoices')
-          .insert([invoice])
-          .select()
-          .single();
-
-        if (!result.error) {
-          invoiceData = result.data;
-          break;
-        }
-
-        if (result.error.code === '23505') {
-          attempts++;
-          continue;
-        }
-
+      if (invoiceResult.error) {
         alert('Error creating invoice');
         return;
       }
 
-      if (!invoiceData) {
-        alert('Unable to generate unique invoice number. Please try again.');
-        return;
-      }
+      const invoiceData = invoiceResult.data;
 
       let remainingToSell = litersSold;
       const lineItems = [];
@@ -450,6 +439,7 @@ export default function Sales() {
       setShowInvoiceModal(false);
       loadData();
       setActiveTab('invoices');
+      setSearchParams({ tab: 'invoices' });
     } finally {
       setSubmitting(false);
     }
@@ -496,13 +486,14 @@ export default function Sales() {
         return;
       }
 
-      let invoiceData = null;
-      let attempts = 0;
-      const maxAttempts = 3;
+      const { data: invoiceNumberData2, error: invoiceNumberError2 } = await supabase.rpc('generate_invoice_number');
+      if (invoiceNumberError2) throw invoiceNumberError2;
+      const invoiceNumber2 = invoiceNumberData2 as string;
 
-      while (attempts < maxAttempts) {
-        const invoice = {
-          invoice_number: generateInvoiceNumber(),
+      const invoiceResult2 = await supabase
+        .from('invoices')
+        .insert([{
+          invoice_number: invoiceNumber2,
           delivery_note_number: deliveryNote,
           client_id: selectedClient || null,
           vehicle_id: selectedVehicle || null,
@@ -515,32 +506,16 @@ export default function Sales() {
           status: 'unsettled',
           created_by: profile.id,
           is_test_data: isTestingMode,
-        };
+        }])
+        .select()
+        .single();
 
-        const result = await supabase
-          .from('invoices')
-          .insert([invoice])
-          .select()
-          .single();
-
-        if (!result.error) {
-          invoiceData = result.data;
-          break;
-        }
-
-        if (result.error.code === '23505') {
-          attempts++;
-          continue;
-        }
-
+      if (invoiceResult2.error) {
         alert('Error creating invoice');
         return;
       }
 
-      if (!invoiceData) {
-        alert('Unable to generate unique invoice number. Please try again.');
-        return;
-      }
+      const invoiceData = invoiceResult2.data;
 
       let remainingToSell = litersSold;
       const lineItems = [];
@@ -726,7 +701,7 @@ export default function Sales() {
           <h1 className="text-2xl font-light">Sales</h1>
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => setActiveTab('invoices')}
+              onClick={() => { setActiveTab('invoices'); setSearchParams({ tab: 'invoices' }); }}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-light transition-colors ${
                 activeTab === 'invoices'
                   ? 'bg-white text-black shadow-sm'
@@ -737,7 +712,7 @@ export default function Sales() {
               Invoices
             </button>
             <button
-              onClick={() => setActiveTab('delivery_notes')}
+              onClick={() => { setActiveTab('delivery_notes'); setSearchParams({ tab: 'delivery_notes' }); }}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-light transition-colors relative ${
                 activeTab === 'delivery_notes'
                   ? 'bg-white text-black shadow-sm'
@@ -753,7 +728,7 @@ export default function Sales() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab('statistics')}
+              onClick={() => { setActiveTab('statistics'); setSearchParams({ tab: 'statistics' }); }}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-light transition-colors ${
                 activeTab === 'statistics'
                   ? 'bg-white text-black shadow-sm'
