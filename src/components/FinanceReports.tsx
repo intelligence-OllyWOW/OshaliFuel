@@ -325,24 +325,26 @@ export default function FinanceReports() {
             {!profitMargin ? (
               <EmptyState message="No margin data for this period." />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatBox label="Total Revenue" value={formatCurrency(profitMargin.totalRevenue)} />
-                <StatBox label="Total Cost" value={formatCurrency(profitMargin.totalCost)} />
-                <StatBox label="Gross Profit" value={formatCurrency(profitMargin.grossProfit)} />
-                <StatBox
-                  label="Margin"
-                  value={`${profitMargin.marginPercent.toFixed(1)}%`}
-                  sub={profitMargin.marginPercent >= 0 ? 'Profitable' : 'Loss'}
-                />
-              </div>
-              <div className="flex justify-end mt-3 no-print">
-                <button
-                  onClick={exportProfitMarginCSV}
-                  className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
-                >
-                  <Download size={12} /> Download CSV
-                </button>
-              </div>
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <StatBox label="Total Revenue" value={formatCurrency(profitMargin.totalRevenue)} />
+                  <StatBox label="Total Cost" value={formatCurrency(profitMargin.totalCost)} />
+                  <StatBox label="Gross Profit" value={formatCurrency(profitMargin.grossProfit)} />
+                  <StatBox
+                    label="Margin"
+                    value={`${profitMargin.marginPercent.toFixed(1)}%`}
+                    sub={profitMargin.marginPercent >= 0 ? 'Profitable' : 'Loss'}
+                  />
+                </div>
+                <div className="flex justify-end mt-3 no-print">
+                  <button
+                    onClick={exportProfitMarginCSV}
+                    className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
+                  >
+                    <Download size={12} /> Download CSV
+                  </button>
+                </div>
+              </>
             )}
           </SectionCard>
 
@@ -498,23 +500,25 @@ export default function FinanceReports() {
             {!procurementCosts || procurementCosts.grCount === 0 ? (
               <EmptyState message="No procurement records for this period." />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatBox label="Total Spent" value={formatCurrency(procurementCosts.totalSpent)} />
-                <StatBox
-                  label="Total Liters"
-                  value={`${procurementCosts.totalLiters.toLocaleString(undefined, { maximumFractionDigits: 0 })} L`}
-                />
-                <StatBox label="Avg Cost / Liter" value={formatCurrency(procurementCosts.avgCostPerLiter)} />
-                <StatBox label="GR Records" value={String(procurementCosts.grCount)} />
-              </div>
-              <div className="flex justify-end mt-3 no-print">
-                <button
-                  onClick={exportProcurementCSV}
-                  className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
-                >
-                  <Download size={12} /> Download CSV
-                </button>
-              </div>
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <StatBox label="Total Spent" value={formatCurrency(procurementCosts.totalSpent)} />
+                  <StatBox
+                    label="Total Liters"
+                    value={`${procurementCosts.totalLiters.toLocaleString(undefined, { maximumFractionDigits: 0 })} L`}
+                  />
+                  <StatBox label="Avg Cost / Liter" value={formatCurrency(procurementCosts.avgCostPerLiter)} />
+                  <StatBox label="GR Records" value={String(procurementCosts.grCount)} />
+                </div>
+                <div className="flex justify-end mt-3 no-print">
+                  <button
+                    onClick={exportProcurementCSV}
+                    className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
+                  >
+                    <Download size={12} /> Download CSV
+                  </button>
+                </div>
+              </>
             )}
           </SectionCard>
 
