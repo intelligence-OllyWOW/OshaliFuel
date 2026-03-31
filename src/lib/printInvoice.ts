@@ -57,7 +57,12 @@ export const DEFAULT_PRINT_CONFIG: PrintConfig = {
   invoice_title:       'INVOICE',
 };
 
-export function printInvoice(invoice: Invoice, config: PrintConfig = DEFAULT_PRINT_CONFIG): void {
+export function buildInvoiceHTML(
+  invoice: Invoice,
+  config: PrintConfig = DEFAULT_PRINT_CONFIG,
+  driverName = '',
+  attendantName = ''
+): string {
   // LAYOUT MAP (mm within container; container left=-10mm in print)
   // §A: left=0,  top=13mm,  w=100mm, h=34mm
   // §B: left=108,top=13mm,  w=75mm,  h=34mm
@@ -369,6 +374,7 @@ body {
 
   <!-- §A Company / Seller -->
   <div id="p-a">
+    <img src="/oshali-logo-light.png" alt="Oshali Fuel" style="max-height:14px; width:auto; display:block; margin-bottom:2mm;" onerror="this.style.display='none'" />
     <div class="psec-hdr" style="border-bottom: none;">${config?.company_name ?? 'OSHALI FUEL'}</div>
     <div>${esc(config.company_address)}</div>
     <div><span class="lbl">Tel: </span>${config.company_tel ? esc(config.company_tel) : '—'}</div>
@@ -423,10 +429,21 @@ body {
     <img src="${window.location.origin}/oshali-logo.png" style="width:100%;height:100%;max-width:181mm;max-height:60mm;object-fit:contain;object-position:center;opacity:0.80;" onerror="this.style.display='none'" />
   </div>
 
-  <!-- §G Notes (unconditional) -->
+  <!-- §G Acknowledgement -->
   <div id="p-g">
-    <div class="psec-hdr">Notes</div>
-    <div style="white-space: pre-wrap; font-size: 9.5pt; font-weight: 900; line-height: 1.5; color: #000;">${esc(config.invoice_footer_text)}</div>
+    <div class="psec-hdr">Acknowledgement</div>
+    <div style="display:flex; gap:6mm; margin-top:2mm;">
+      <div style="flex:1;">
+        <div class="lbl">Driver Name</div>
+        <div style="font-weight:900; min-height:4mm; line-height:1.4;">${esc(driverName)}</div>
+        <div style="margin-top:6mm; border-top:0.8pt solid #000; padding-top:1mm; font-size:8.5pt; font-weight:700; color:#000;">Driver Signature</div>
+      </div>
+      <div style="flex:1;">
+        <div class="lbl">Attendant Name</div>
+        <div style="font-weight:900; min-height:4mm; line-height:1.4;">${esc(attendantName)}</div>
+        <div style="margin-top:6mm; border-top:0.8pt solid #000; padding-top:1mm; font-size:8.5pt; font-weight:700; color:#000;">Attendant Signature</div>
+      </div>
+    </div>
   </div>
 
   <!-- §i Labels (unconditional) -->
@@ -448,12 +465,16 @@ body {
 </body>
 </html>`;
 
+  return html;
+}
+
+export function printInvoice(invoice: Invoice, config: PrintConfig = DEFAULT_PRINT_CONFIG, driverName = '', attendantName = ''): void {
+  const html = buildInvoiceHTML(invoice, config, driverName, attendantName);
+
   console.log('[printInvoice] §G present:', html.includes('id="p-g"'));
   console.log('[printInvoice] §i-labels present:', html.includes('id="p-il"'));
   console.log('[printInvoice] §i-values present:', html.includes('id="p-ir"'));
-  console.log('[printInvoice] netAmount:', netAmount.toFixed(2));
-  console.log('[printInvoice] vatAmount:', vatAmount.toFixed(2));
-  console.log('[printInvoice] totalAmount:', totalAmount.toFixed(2));
+  console.log('[printInvoice] netAmount:', html.includes('N$'));
 
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);

@@ -13,9 +13,10 @@ import SalesStatistics from '../components/SalesStatistics';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
-import jsPDF from 'jspdf';
 import { printDeliveryNote } from '../lib/printDeliveryNote';
-import { printInvoice, DEFAULT_PRINT_CONFIG, PrintConfig } from '../lib/printInvoice';
+import { printInvoice, buildInvoiceHTML, DEFAULT_PRINT_CONFIG, PrintConfig } from '../lib/printInvoice';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 async function fetchAllInvoicesWithPagination(): Promise<any[]> {
   const PAGE_SIZE = 1000;
@@ -571,70 +572,48 @@ export default function Sales() {
     }
   }
 
-  function downloadInvoicePDF(invoice: Invoice) {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+  async function downloadInvoicePDF(invoice: Invoice) {
+    const linkedDN      = deliveryNotes.find(
+      (dn) => dn.note_number === invoice.delivery_note_number
+    );
+    const driverName    = linkedDN?.driver_name    ?? '';
+    const attendantName = linkedDN?.attendant_name ?? '';
 
-    doc.setFontSize(20);
-    doc.text('INVOICE', pageWidth / 2, 20, { align: 'center' });
+    const html = buildInvoiceHTML(invoice, printConfig, driverName, attendantName);
 
-    doc.setFontSize(12);
-    doc.text('Oshali Fuel', pageWidth / 2, 30, { align: 'center' });
+    // Render HTML in a hidden off-screen container
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:794px;background:#fff;';
+    container.innerHTML = html;
+    document.body.appendChild(container);
 
-    doc.setFontSize(10);
-    doc.text(`Invoice #: ${invoice.invoice_number}`, 20, 50);
-    doc.text(`Date: ${format(new Date(invoice.created_at), 'MMM dd, yyyy')}`, 20, 58);
-    doc.text(`Delivery Note: ${invoice.delivery_note_number}`, 20, 66);
+    // Hide print toolbar so it doesn't appear in the PDF
+    const toolbar = container.querySelector<HTMLElement>('.no-print');
+    if (toolbar) toolbar.style.display = 'none';
 
-    if (invoice.client) {
-      doc.text('Bill To:', 120, 50);
-      doc.text(invoice.client.name, 120, 58);
-      if (invoice.client.po_box) doc.text(invoice.client.po_box, 120, 66);
-      if (invoice.client.cell_number) doc.text(invoice.client.cell_number, 120, 74);
+    try {
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth  = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth   = pageWidth;
+      const imgHeight  = (canvas.height * pageWidth) / canvas.width;
+      // Handle multi-page if content is taller than one A4 page
+      let yOffset = 0;
+      while (yOffset < imgHeight) {
+        if (yOffset > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, -yOffset, imgWidth, imgHeight);
+        yOffset += pageHeight;
+      }
+      pdf.save(`Invoice-${invoice.invoice_number}.pdf`);
+    } finally {
+      if (toolbar) toolbar.style.display = '';
+      document.body.removeChild(container);
     }
-
-    let yPos = 95;
-    doc.setFillColor(240, 240, 240);
-    doc.rect(20, yPos - 5, pageWidth - 40, 10, 'F');
-    doc.setFontSize(10);
-    doc.text('Description', 25, yPos);
-    doc.text('Quantity', 90, yPos);
-    doc.text('Unit Price', 120, yPos);
-    doc.text('Amount', 160, yPos);
-
-    yPos += 15;
-    doc.text(invoice.item_description || 'Diesel Fuel', 25, yPos);
-    doc.text(`${invoice.liters_sold.toLocaleString()} L`, 90, yPos);
-    doc.text(formatCurrency(invoice.selling_price_per_liter), 120, yPos);
-    doc.text(formatCurrency(invoice.total_amount), 160, yPos);
-
-    yPos += 20;
-    doc.line(20, yPos, pageWidth - 20, yPos);
-    yPos += 10;
-
-    doc.setFontSize(12);
-    doc.text('Total:', 120, yPos);
-    doc.text(formatCurrency(invoice.total_amount), 160, yPos);
-
-    yPos += 15;
-    const statusText = invoice.status === 'settled' ? 'PAID' : invoice.status === 'void' ? 'VOID' : 'UNPAID';
-    const statusColor = invoice.status === 'settled' ? [34, 197, 94] : invoice.status === 'void' ? [239, 68, 68] : [234, 179, 8];
-    doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-    doc.setFontSize(14);
-    doc.text(statusText, pageWidth / 2, yPos, { align: 'center' });
-
-    if (invoice.status === 'settled' && invoice.payment_method) {
-      doc.setTextColor(100, 100, 100);
-      doc.setFontSize(10);
-      doc.text(`Payment Method: ${invoice.payment_method.toUpperCase()}`, pageWidth / 2, yPos + 8, { align: 'center' });
-    }
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(9);
-    doc.text('Thank you for your business!', pageWidth / 2, 270, { align: 'center' });
-
-    doc.save(`Invoice-${invoice.invoice_number}.pdf`);
   }
+
+
 
   const canCreate =
     profile?.role === 'pump_attendant' ||
@@ -911,7 +890,7 @@ export default function Sales() {
                   <Button size="sm" variant="secondary" onClick={() => handleViewInvoice(invoice)}>
                     <Eye className="w-4 h-4" strokeWidth={1} />
                   </Button>
-                  <Button size="sm" variant="secondary" onClick={() => downloadInvoicePDF(invoice)}>
+                  <Button size="sm" variant="secondary" onClick={() => void downloadInvoicePDF(invoice)}>
                     <Download className="w-4 h-4" strokeWidth={1} />
                   </Button>
                   <Button size="sm" variant="secondary" onClick={() => printInvoice(invoice, printConfig)}>
@@ -1379,7 +1358,7 @@ export default function Sales() {
                 <Printer className="w-4 h-4 mr-2" strokeWidth={1} />
                 Print Invoice
               </Button>
-              <Button variant="secondary" onClick={() => downloadInvoicePDF(selectedInvoice)} className="flex-1">
+              <Button variant="secondary" onClick={() => void downloadInvoicePDF(selectedInvoice!)} className="flex-1">
                 <Download className="w-4 h-4 mr-2" strokeWidth={1} />
                 Download Invoice
               </Button>

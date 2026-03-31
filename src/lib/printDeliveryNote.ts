@@ -229,6 +229,7 @@ body {
 <div class="page">
   <!-- Section A: Title / Company -->
   <div class="sec" id="sec-a">
+    <img src="/oshali-logo-light.png" alt="Oshali Fuel" style="max-height:14px; width:auto; display:block; margin-bottom:2mm;" onerror="this.style.display='none'" />
     <div class="sec-hdr-lg">DELIVERY NOTE</div>
     <div class="row">
       <div class="label">Fuel Dispensing Record</div>
