@@ -11,10 +11,16 @@ export default function OshaliLoader({ variant = 'fullscreen', message }: Oshali
   const r = isInline ? 44 : 70
   const circumference = 2 * Math.PI * r
   const dashArray = isInline ? `${circumference * 0.74} ${circumference * 0.26}` : '260 92'
-  const dropMarginTop = isInline ? 60 : 100
 
   const stage = (
-    <div style={{ position: 'relative', width: stageSize, height: stageSize }}>
+    <div style={{
+      position: 'relative',
+      width: stageSize,
+      height: stageSize,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
       <style>{`
         @keyframes oshali-spin {
           from { transform: rotate(0deg); }
@@ -26,7 +32,7 @@ export default function OshaliLoader({ variant = 'fullscreen', message }: Oshali
         }
       `}</style>
 
-      {/* Spinning ring */}
+      {/* Spinning ring — absolute so it doesn't affect flex flow */}
       <div style={{
         position: 'absolute',
         inset: 0,
@@ -53,23 +59,23 @@ export default function OshaliLoader({ variant = 'fullscreen', message }: Oshali
         </svg>
       </div>
 
-      {/* Oil drop — sits below center so the ring cuts through it */}
+      {/* Oil drop — normal flex child, centers naturally inside the stage */}
       <div style={{
-        position: 'absolute',
-        left: '50%',
-        top: dropMarginTop,
-        transform: 'translateX(-50%)',
+        position: 'relative',
         zIndex: 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         animation: 'oshali-pulse 2s ease-in-out infinite',
       }}>
         {isInline ? (
-          <svg width="28" height="34" viewBox="0 0 52 64" fill="none">
+          <svg width="36" height="44" viewBox="0 0 52 64" style={{ display: 'block' }} fill="none">
             <path d="M26 2 C26 2 3 30 3 43 C3 55.7 13.4 63 26 63 C38.6 63 49 55.7 49 43 C49 30 26 2 26 2Z" fill="#f5a623"/>
             <path d="M26 16 C26 16 10 36 10 45 C10 53.5 17.2 59 26 59 C34.8 59 42 53.5 42 45 C42 36 26 16 26 16Z" fill="#ffc947" opacity="0.45"/>
             <ellipse cx="19" cy="38" rx="4" ry="6" fill="white" opacity="0.22" transform="rotate(-18 19 38)"/>
           </svg>
         ) : (
-          <svg width="52" height="64" viewBox="0 0 52 64" fill="none">
+          <svg width="64" height="78" viewBox="0 0 52 64" style={{ display: 'block' }} fill="none">
             <path d="M26 2 C26 2 3 30 3 43 C3 55.7 13.4 63 26 63 C38.6 63 49 55.7 49 43 C49 30 26 2 26 2Z" fill="#f5a623"/>
             <path d="M26 16 C26 16 10 36 10 45 C10 53.5 17.2 59 26 59 C34.8 59 42 53.5 42 45 C42 36 26 16 26 16Z" fill="#ffc947" opacity="0.45"/>
             <ellipse cx="19" cy="38" rx="4" ry="6" fill="white" opacity="0.22" transform="rotate(-18 19 38)"/>
