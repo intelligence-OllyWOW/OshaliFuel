@@ -5,7 +5,7 @@ import Card from '../../components/ui/Card';
 import TankVisualization from '../../components/TankVisualization';
 import HorizontalBarList from '../../components/charts/HorizontalBarList';
 import Select from '../../components/ui/Select';
-import { Receipt, AlertCircle, FileText, Calendar, ClipboardList, Truck, Plus } from 'lucide-react';
+import { Receipt, AlertCircle, FileText, Calendar, ClipboardList, Truck, Plus, Droplets, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { formatNumber } from '../../lib/utils';
@@ -173,6 +173,39 @@ export default function OperationsDashboard() {
     }
   }
 
+  const periodLabel = datePreset === 'today' ? "Today's" : "This Month's";
+
+  const statCards = [
+    {
+      label: 'Total Inventory',
+      value: `${formatNumber(stats.totalInventory)}L`,
+      icon: <Droplets strokeWidth={1} />,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+    },
+    {
+      label: `${periodLabel} Sales`,
+      value: `${formatNumber(stats.todaySales)}L`,
+      icon: <TrendingUp strokeWidth={1} />,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+    },
+    {
+      label: 'Low Level Tanks',
+      value: stats.lowLevelTanks.toString(),
+      icon: <AlertCircle strokeWidth={1} />,
+      color: stats.lowLevelTanks > 0 ? 'text-red-600' : 'text-gray-400',
+      bg: stats.lowLevelTanks > 0 ? 'bg-red-50' : 'bg-gray-50',
+    },
+    {
+      label: 'Pending Requisitions',
+      value: stats.pendingPRs.toString(),
+      icon: <ClipboardList strokeWidth={1} />,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+    },
+  ];
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
@@ -199,6 +232,23 @@ export default function OperationsDashboard() {
         <OshaliLoader variant="inline" />
       ) : (
         <div className="space-y-6">
+
+          {/* Zone 0 — Stat Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {statCards.map((stat) => (
+              <Card key={stat.label}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs font-light text-gray-500 mb-2">{stat.label}</div>
+                    <div className="text-2xl font-light">{stat.value}</div>
+                  </div>
+                  <div className={`${stat.color} ${stat.bg} w-12 h-12 rounded-xl flex items-center justify-center`}>
+                    {stat.icon}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
 
           {/* Zone 1 — Primary Action Buttons */}
           <div className="grid grid-cols-3 gap-3">

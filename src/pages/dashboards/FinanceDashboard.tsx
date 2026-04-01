@@ -9,7 +9,7 @@ import { DollarSign, Receipt, FileText, TrendingUp, Calendar, AlertCircle, Check
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency, formatNumber } from '../../lib/utils';
-import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek, subWeeks, subMonths, startOfYear, endOfYear } from 'date-fns';
 
 interface DashboardStats {
   monthRevenue: number;
@@ -30,7 +30,7 @@ interface RecentPO {
   liters_ordered: number;
 }
 
-type DatePreset = 'today' | 'this_month';
+type DatePreset = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'this_year' | 'custom';
 
 export default function FinanceDashboard() {
   const { profile } = useAuth();
@@ -46,17 +46,49 @@ export default function FinanceDashboard() {
   const [dailyRevenue, setDailyRevenue] = useState<{ label: string; value: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [datePreset, setDatePreset] = useState<DatePreset>('this_month');
+  const [customFrom, setCustomFrom] = useState<string>(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [customTo, setCustomTo] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
   useEffect(() => {
+    if (datePreset === 'custom' && (!customFrom || !customTo)) return;
     loadDashboardData();
-  }, [datePreset]);
+  }, [datePreset, customFrom, customTo]);
 
   async function loadDashboardData() {
     try {
       const now = new Date();
-      const { start, end } = datePreset === 'today'
-        ? { start: startOfDay(now), end: endOfDay(now) }
-        : { start: startOfMonth(now), end: endOfMonth(now) };
+      let start: Date;
+      let end: Date;
+
+      if (datePreset === 'custom') {
+        start = startOfDay(new Date(customFrom));
+        end = endOfDay(new Date(customTo));
+      } else {
+        switch (datePreset) {
+          case 'today':
+            start = startOfDay(now); end = endOfDay(now); break;
+          case 'yesterday':
+            start = startOfDay(subDays(now, 1)); end = endOfDay(subDays(now, 1)); break;
+          case 'this_week':
+            start = startOfWeek(now, { weekStartsOn: 1 }); end = endOfDay(now); break;
+          case 'last_week': {
+            const lastWeek = subWeeks(now, 1);
+            start = startOfWeek(lastWeek, { weekStartsOn: 1 });
+            end = endOfWeek(lastWeek, { weekStartsOn: 1 });
+            break;
+          }
+          case 'last_month': {
+            const lastMonth = subMonths(now, 1);
+            start = startOfMonth(lastMonth); end = endOfMonth(lastMonth);
+            break;
+          }
+          case 'this_year':
+            start = startOfYear(now); end = endOfYear(now); break;
+          case 'this_month':
+          default:
+            start = startOfMonth(now); end = endOfMonth(now);
+        }
+      }
 
       const startISO = start.toISOString();
       const endISO = end.toISOString();
@@ -162,7 +194,17 @@ export default function FinanceDashboard() {
     }
   }
 
-  const periodLabel = datePreset === 'today' ? "Today's" : "This Month's";
+  const periodLabels: Record<DatePreset, string> = {
+    today: "Today's",
+    yesterday: "Yesterday's",
+    this_week: "This Week's",
+    last_week: "Last Week's",
+    this_month: "This Month's",
+    last_month: "Last Month's",
+    this_year: "This Year's",
+    custom: "Custom Period",
+  };
+  const periodLabel = periodLabels[datePreset];
 
   const statCards = [
     {
@@ -214,16 +256,39 @@ export default function FinanceDashboard() {
             Welcome back, {profile?.full_name}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Calendar className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
           <Select
             value={datePreset}
             onChange={(e) => setDatePreset(e.target.value as DatePreset)}
-            className="w-40"
+            className="w-44"
           >
             <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="this_week">This Week</option>
+            <option value="last_week">Last Week</option>
             <option value="this_month">This Month</option>
+            <option value="last_month">Last Month</option>
+            <option value="this_year">This Year</option>
+            <option value="custom">Custom Range</option>
           </Select>
+          {datePreset === 'custom' && (
+            <>
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm font-light text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-sm font-light text-gray-400">to</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm font-light text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </>
+          )}
         </div>
       </div>
 

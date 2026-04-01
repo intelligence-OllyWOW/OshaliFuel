@@ -127,6 +127,12 @@ const navItems: NavItem[] = [
     roles: ['super_admin', 'general_manager', 'finance', 'administrator', 'operations_supervisor'],
   },
   {
+    label: 'Reports',
+    path: '/portal/finance/reports',
+    icon: <Receipt strokeWidth={1} />,
+    roles: ['super_admin', 'finance'],
+  },
+  {
     label: 'Users',
     path: '/users',
     icon: <Users strokeWidth={1} />,
@@ -294,7 +300,7 @@ export default function Layout({ children }: LayoutProps) {
   const selectedPortal = getSelectedPortalFromPath();
 
   const isSuperAdmin = profile?.role === 'super_admin';
-  const isMobile = profile?.role === 'pump_attendant' || profile?.role === 'operations_supervisor' || profile?.role === 'attendant';
+  const isMobile = profile?.role === 'attendant';
 
   const currentNavItems = isSuperAdmin
     ? selectedPortal === 'super_admin_portal'
