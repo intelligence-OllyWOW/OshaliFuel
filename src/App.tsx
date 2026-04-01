@@ -13,6 +13,7 @@ import Sales from './pages/Sales';
 import Pricing from './pages/Pricing';
 import Users from './pages/Users';
 import Clients from './pages/Clients';
+import Expenses from './pages/Expenses';
 import GeneralManagerPortal from './pages/portals/GeneralManagerPortal';
 import FinancePortal from './pages/portals/FinancePortal';
 import AdministratorPortal from './pages/portals/AdministratorPortal';
@@ -87,6 +88,24 @@ function AppContent() {
               <ProtectedRoute allowedRoles={['super_admin', 'general_manager']}>
                 <Layout>
                   <Clients />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/expenses"
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  'super_admin',
+                  'general_manager',
+                  'finance',
+                  'administrator',
+                  'operations_supervisor',
+                ]}
+              >
+                <Layout>
+                  <Expenses />
                 </Layout>
               </ProtectedRoute>
             }

@@ -5,6 +5,7 @@ import Inventory from '../Inventory';
 import Sales from '../Sales';
 import Pricing from '../Pricing';
 import Clients from '../Clients';
+import Expenses from '../Expenses';
 
 export default function GeneralManagerPortal() {
   return (
@@ -15,6 +16,7 @@ export default function GeneralManagerPortal() {
       <Route path="sales" element={<Sales />} />
       <Route path="pricing" element={<Pricing />} />
       <Route path="clients" element={<Clients />} />
+      <Route path="expenses" element={<Expenses />} />
       <Route path="*" element={<Navigate to="/portal/general-manager" replace />} />
     </Routes>
   );

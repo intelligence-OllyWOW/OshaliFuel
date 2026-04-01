@@ -20,6 +20,7 @@ import {
   FlaskConical,
   ChevronLeft,
   ChevronRight,
+  Wallet,
 } from 'lucide-react';
 import { UserRole } from '../lib/database.types';
 import { useNotifications } from '../hooks/useNotifications';
@@ -120,6 +121,12 @@ const navItems: NavItem[] = [
     roles: ['super_admin', 'general_manager'],
   },
   {
+    label: 'Expenses',
+    path: '/expenses',
+    icon: <Wallet strokeWidth={1} />,
+    roles: ['super_admin', 'general_manager', 'finance', 'administrator', 'operations_supervisor'],
+  },
+  {
     label: 'Users',
     path: '/users',
     icon: <Users strokeWidth={1} />,
@@ -171,6 +178,12 @@ const portalNavItems: Record<string, NavItem[]> = {
       icon: <UserCircle strokeWidth={1} />,
       roles: ['general_manager'],
     },
+    {
+      label: 'Expenses',
+      path: '/portal/general-manager/expenses',
+      icon: <Wallet strokeWidth={1} />,
+      roles: ['general_manager'],
+    },
   ],
   finance: [
     {
@@ -183,6 +196,12 @@ const portalNavItems: Record<string, NavItem[]> = {
       label: 'Procurement',
       path: '/portal/finance/procurement',
       icon: <FileText strokeWidth={1} />,
+      roles: ['finance'],
+    },
+    {
+      label: 'Expenses',
+      path: '/portal/finance/expenses',
+      icon: <Wallet strokeWidth={1} />,
       roles: ['finance'],
     },
     {

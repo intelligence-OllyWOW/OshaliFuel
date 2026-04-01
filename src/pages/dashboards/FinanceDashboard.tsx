@@ -5,7 +5,7 @@ import Card from '../../components/ui/Card';
 import RevenueTrendChart from '../../components/RevenueTrendChart';
 import HorizontalBarList from '../../components/charts/HorizontalBarList';
 import Select from '../../components/ui/Select';
-import { DollarSign, Receipt, FileText, TrendingUp, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
+import { DollarSign, Receipt, FileText, TrendingUp, Calendar, AlertCircle, CheckCircle, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency, formatNumber } from '../../lib/utils';
@@ -16,6 +16,8 @@ interface DashboardStats {
   settledInvoices: number;
   unsettledInvoices: number;
   totalPurchases: number;
+  costOfFuelSold: number;
+  approvedExpenses: number;
 }
 
 interface RecentPO {
@@ -37,6 +39,8 @@ export default function FinanceDashboard() {
     settledInvoices: 0,
     unsettledInvoices: 0,
     totalPurchases: 0,
+    costOfFuelSold: 0,
+    approvedExpenses: 0,
   });
   const [recentPOs, setRecentPOs] = useState<RecentPO[]>([]);
   const [dailyRevenue, setDailyRevenue] = useState<{ label: string; value: number }[]>([]);
@@ -63,7 +67,9 @@ export default function FinanceDashboard() {
         unsettledInvoicesResult,
         posResult,
         purchasesResult,
-        recentRevenueResult
+        recentRevenueResult,
+        lineItemsResult,
+        approvedExpensesResult
       ] = await Promise.all([
         supabase
           .from('invoices')
@@ -102,11 +108,25 @@ export default function FinanceDashboard() {
           .lte('created_at', endOfDay(now).toISOString())
           .neq('status', 'void')
           .order('created_at', { ascending: true })
-          .limit(50000)
+          .limit(50000),
+        supabase
+          .from('invoice_line_items')
+          .select('liters_from_item, cost_per_liter, invoices!inner(created_at, status)')
+          .gte('invoices.created_at', startISO)
+          .lte('invoices.created_at', endISO)
+          .neq('invoices.status', 'void'),
+        supabase
+          .from('expenses')
+          .select('amount')
+          .eq('status', 'approved')
+          .gte('approved_at', startISO)
+          .lte('approved_at', endISO)
       ]);
 
       const monthRevenue = invoicesResult.data?.reduce((sum, inv) => sum + inv.total_amount, 0) || 0;
       const totalPurchases = purchasesResult.data?.reduce((sum, po) => sum + po.total_amount, 0) || 0;
+      const costOfFuelSold = lineItemsResult.data?.reduce((sum, item) => sum + (item.liters_from_item * item.cost_per_liter), 0) || 0;
+      const approvedExpenses = approvedExpensesResult.data?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
 
       const dailyRevenueMap: { [key: string]: number } = {};
       for (let i = 0; i < 7; i++) {
@@ -129,6 +149,8 @@ export default function FinanceDashboard() {
         settledInvoices: settledInvoicesResult.data?.length || 0,
         unsettledInvoices: unsettledInvoicesResult.data?.length || 0,
         totalPurchases,
+        costOfFuelSold,
+        approvedExpenses,
       });
 
       setRecentPOs(posResult.data || []);
@@ -158,6 +180,13 @@ export default function FinanceDashboard() {
       bg: 'bg-red-50',
     },
     {
+      label: `${periodLabel} Expenses`,
+      value: formatCurrency(stats.approvedExpenses),
+      icon: <Wallet strokeWidth={1} />,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+    },
+    {
       label: 'Settled Invoices',
       value: stats.settledInvoices.toString(),
       icon: <Receipt strokeWidth={1} />,
@@ -173,7 +202,8 @@ export default function FinanceDashboard() {
     },
   ];
 
-  const netIncome = stats.monthRevenue - stats.totalPurchases;
+  const grossProfit = stats.monthRevenue - stats.costOfFuelSold;
+  const netIncome = grossProfit - stats.approvedExpenses;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -239,15 +269,23 @@ export default function FinanceDashboard() {
               <h3 className="text-sm font-light text-gray-500">{periodLabel} Financial Summary</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl">
-                  <span className="text-xs font-light text-gray-600">Total Revenue</span>
+                  <span className="text-xs font-light text-gray-600">Gross Sales Revenue</span>
                   <span className="text-lg font-light text-emerald-600">{formatCurrency(stats.monthRevenue)}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl">
-                  <span className="text-xs font-light text-gray-600">Total Purchases</span>
-                  <span className="text-lg font-light text-red-600">-{formatCurrency(stats.totalPurchases)}</span>
+                  <span className="text-xs font-light text-gray-600">Cost of Fuel Sold</span>
+                  <span className="text-lg font-light text-red-600">-{formatCurrency(stats.costOfFuelSold)}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+                  <span className="text-xs font-light text-gray-600">Gross Profit</span>
+                  <span className="text-lg font-light text-blue-600">{formatCurrency(grossProfit)}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-xl">
+                  <span className="text-xs font-light text-gray-600">Operating Expenses</span>
+                  <span className="text-lg font-light text-orange-600">-{formatCurrency(stats.approvedExpenses)}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl border-2 border-blue-200">
-                  <span className="text-sm font-medium text-gray-700">Net Income</span>
+                  <span className="text-sm font-medium text-gray-700">Net Profit</span>
                   <span className={`text-xl font-light ${netIncome >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                     {formatCurrency(netIncome)}
                   </span>
