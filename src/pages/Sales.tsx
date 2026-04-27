@@ -618,8 +618,7 @@ export default function Sales() {
   const canCreate =
     profile?.role === 'pump_attendant' ||
     profile?.role === 'operations_supervisor' ||
-    profile?.role === 'super_admin' ||
-    profile?.role === 'general_manager';
+    profile?.role === 'super_admin';
 
   const canUpdateStatus =
     profile?.role === 'operations_supervisor' ||
