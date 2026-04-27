@@ -374,7 +374,7 @@ body {
 
   <!-- §A Company / Seller -->
   <div id="p-a">
-    <img src="/oshali-logo-light.png" alt="Oshali Fuel" style="max-height:14px; width:auto; display:block; margin-bottom:2mm;" onerror="this.style.display='none'" />
+    <img src="/oshali-logo.png" alt="Oshali Fuel" style="max-height:55px; width:auto; display:block; margin-bottom:2mm;" onerror="this.style.display='none'" />
     <div class="psec-hdr" style="border-bottom: none;">${config?.company_name ?? 'OSHALI FUEL'}</div>
     <div>${esc(config.company_address)}</div>
     <div><span class="lbl">Tel: </span>${config.company_tel ? esc(config.company_tel) : '—'}</div>
@@ -426,7 +426,7 @@ body {
 
   <!-- §logo — between §F (ends 168mm) and §G (starts 178mm) -->
   <div id="p-logo" style="position:absolute;left:0mm;top:135mm;width:181mm;height:60mm;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;">
-    <img src="${window.location.origin}/oshali-logo.png" style="width:100%;height:100%;max-width:181mm;max-height:60mm;object-fit:contain;object-position:center;opacity:0.80;" onerror="this.style.display='none'" />
+    <img src="${window.location.origin}/oshali-logo.png" style="width:100%;height:100%;max-width:181mm;max-height:60mm;object-fit:contain;object-position:center;opacity:0.18;" onerror="this.style.display='none'" />
   </div>
 
   <!-- §G Acknowledgement -->
