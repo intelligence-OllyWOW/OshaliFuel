@@ -88,6 +88,9 @@ interface Invoice {
   item_description: string | null;
   created_at: string;
   settled_at: string | null;
+  invoice_date?: string | null;
+  due_date?: string | null;
+  payment_reference?: string | null;
   client?: Client | null;
   client_vehicle?: ClientVehicle | null;
 }
@@ -135,6 +138,7 @@ export default function Sales() {
   const [statusForm, setStatusForm] = useState({
     status: 'unsettled',
     payment_method: '',
+    payment_reference: '',
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -310,6 +314,7 @@ export default function Sales() {
       const updateData: any = {
         status: statusForm.status,
         payment_method: statusForm.status === 'settled' ? statusForm.payment_method : null,
+        payment_reference: statusForm.payment_reference?.trim() || null,
       };
 
       if (statusForm.status === 'settled') {
@@ -457,6 +462,7 @@ export default function Sales() {
       const itemDescription = formData.get('itemDescription') as string || 'Diesel Fuel';
       const invoiceDate = formData.get('invoiceDate') as string;
       const dueDate = formData.get('dueDate') as string;
+      const paymentReference = (formData.get('paymentReference') as string)?.trim() || null;
 
       const { data: existingDeliveryNote } = await supabase
         .from('invoices')
@@ -504,6 +510,7 @@ export default function Sales() {
           item_description: itemDescription,
           invoice_date: invoiceDate,
           due_date: dueDate,
+          payment_reference: paymentReference,
           status: 'unsettled',
           created_by: profile.id,
           is_test_data: isTestingMode,
@@ -1093,6 +1100,13 @@ export default function Sales() {
               />
             </div>
 
+            <Input
+              name="paymentReference"
+              label="Payment Reference (Optional)"
+              placeholder="e.g. EFT-20260514, CHQ-00123"
+              maxLength={100}
+            />
+
             <Select
               label="Client (Optional)"
               value={selectedClient}
@@ -1217,6 +1231,16 @@ export default function Sales() {
                   <span className="text-sm font-light">EFT</span>
                 </button>
               </div>
+
+              <Input
+                label="Payment Reference (Optional)"
+                placeholder="e.g. EFT-20260514, CHQ-00123 — shared across bulk payments"
+                maxLength={100}
+                value={statusForm.payment_reference}
+                onChange={(e) =>
+                  setStatusForm((prev) => ({ ...prev, payment_reference: e.target.value }))
+                }
+              />
             </div>
           )}
 
@@ -1254,8 +1278,14 @@ export default function Sales() {
                   <div className="font-normal">{selectedInvoice.invoice_number || '-'}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-500 mb-1">Date</div>
-                  <div>{selectedInvoice.created_at ? format(new Date(selectedInvoice.created_at), 'MMM dd, yyyy HH:mm') : '-'}</div>
+                  <div className="text-sm text-gray-500 mb-1">Invoice Date</div>
+                  <div>
+                    {selectedInvoice.invoice_date
+                      ? format(new Date(selectedInvoice.invoice_date), 'MMM dd, yyyy')
+                      : selectedInvoice.created_at
+                        ? format(new Date(selectedInvoice.created_at), 'MMM dd, yyyy')
+                        : '-'}
+                  </div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Client</div>
@@ -1265,6 +1295,12 @@ export default function Sales() {
                   <div className="text-sm text-gray-500 mb-1">Delivery Note</div>
                   <div>{selectedInvoice.delivery_note_number || '-'}</div>
                 </div>
+                {selectedInvoice.payment_reference && (
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Payment Reference</div>
+                    <div className="font-medium text-indigo-700">{selectedInvoice.payment_reference}</div>
+                  </div>
+                )}
               </div>
               <div>
                 {getStatusBadge(selectedInvoice.status, selectedInvoice.payment_method)}

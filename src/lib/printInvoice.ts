@@ -15,6 +15,8 @@ interface Invoice {
   item_description: string | null;
   created_at: string;
   settled_at?: string | null;
+  invoice_date?: string | null;
+  payment_reference?: string | null;
   client?: {
     id: string;
     name: string;
@@ -74,7 +76,7 @@ export function buildInvoiceHTML(
   // §iL:left=88, top=178mm, w=38mm,  h=37mm
   // §iR:left=126,top=178mm, w=35mm,  h=37mm
 
-  const date = format(new Date(invoice.created_at), 'dd/MM/yyyy');
+  const date = format(new Date(invoice.invoice_date ?? invoice.created_at), 'dd/MM/yyyy');
   const time = format(new Date(invoice.created_at), 'HH:mm');
 
   const totalAmount = Number(invoice.total_amount) || 0;
@@ -387,6 +389,7 @@ body {
     <div><span class="lbl">No: </span>${esc(invoice.invoice_number)}</div>
     <div><span class="lbl">Date: </span>${date} ${time}</div>
     <div><span class="lbl">DN: </span>${esc(invoice.delivery_note_number)}</div>
+    ${invoice.payment_reference ? `<div><span class="lbl">Payment Ref: </span>${esc(invoice.payment_reference)}</div>` : ''}
   </div>
 
   <!-- §C Bill To -->
