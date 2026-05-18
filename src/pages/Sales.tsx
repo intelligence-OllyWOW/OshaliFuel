@@ -867,7 +867,7 @@ export default function Sales() {
                     <span className="font-light">{invoice.invoice_number}</span>
                     {getStatusBadge(invoice.status, invoice.payment_method)}
                     <span className="text-xs font-light text-gray-500">
-                      {format(new Date(invoice.created_at), 'MMM dd, yyyy HH:mm')}
+                      {format(new Date(invoice.invoice_date || invoice.created_at), 'MMM dd, yyyy')}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm font-light">

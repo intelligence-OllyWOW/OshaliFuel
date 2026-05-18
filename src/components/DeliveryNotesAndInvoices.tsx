@@ -47,6 +47,7 @@ interface Invoice {
   status: string;
   payment_method: string | null;
   item_description: string | null;
+  invoice_date: string | null;
   created_at: string;
   created_by: string;
   client?: { name: string; email?: string } | null;
@@ -156,7 +157,7 @@ export default function DeliveryNotesAndInvoices() {
       selling_price_per_liter: invoice.selling_price_per_liter,
       total_amount: invoice.total_amount,
       status: invoice.status,
-      created_at: invoice.created_at,
+      created_at: invoice.invoice_date || invoice.created_at,
     });
   }
 
@@ -301,7 +302,7 @@ export default function DeliveryNotesAndInvoices() {
     yPos += 5;
     doc.text(`Delivery Note #: ${invoice.delivery_note_number}`, margin, yPos);
     yPos += 5;
-    doc.text(`Date: ${format(new Date(invoice.created_at), 'dd/MM/yyyy')}`, margin, yPos);
+    doc.text(`Date: ${format(new Date(invoice.invoice_date || invoice.created_at), 'dd/MM/yyyy')}`, margin, yPos);
     yPos += 8;
 
     // Client info
@@ -499,7 +500,7 @@ export default function DeliveryNotesAndInvoices() {
                       Status: <span className="font-medium capitalize">{invoice.status}</span>
                     </p>
                     <p className="text-sm text-gray-500">
-                      Created: {format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm')}
+                      Date: {format(new Date(invoice.invoice_date || invoice.created_at), 'dd/MM/yyyy')}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -646,8 +647,8 @@ export default function DeliveryNotesAndInvoices() {
               <p className="text-lg font-semibold capitalize">{selectedInvoice.status}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Created</p>
-              <p className="text-lg font-semibold">{format(new Date(selectedInvoice.created_at), 'dd/MM/yyyy HH:mm')}</p>
+              <p className="text-sm text-gray-600">Invoice Date</p>
+              <p className="text-lg font-semibold">{format(new Date(selectedInvoice.invoice_date || selectedInvoice.created_at), 'dd/MM/yyyy')}</p>
             </div>
 
             <div className="flex gap-3 pt-4">
