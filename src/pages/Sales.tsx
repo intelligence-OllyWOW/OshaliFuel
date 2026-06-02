@@ -8,7 +8,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { Plus, Eye, Download, CheckCircle, XCircle, Clock, CreditCard, Banknote, Building2, Search, BarChart3, FileText, Truck, Bell, Printer, Filter, Calendar } from 'lucide-react';
+import { Plus, Eye, Download, CheckCircle, XCircle, Clock, CreditCard, Banknote, Building2, Search, BarChart3, FileText, Truck, Bell, Printer, Filter, Calendar, Trash2, CheckSquare, Square } from 'lucide-react';
 import SalesStatistics from '../components/SalesStatistics';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
@@ -146,12 +146,18 @@ export default function Sales() {
   const [filterClient, setFilterClient] = useState<string>('all');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'invoices' | 'statistics' | 'delivery_notes'>(
-    (searchParams.get('tab') as 'invoices' | 'statistics' | 'delivery_notes') || 'invoices'
+  const [activeTab, setActiveTab] = useState<'invoices' | 'statistics' | 'delivery_notes' | 'bulk_delete'>(
+    (searchParams.get('tab') as 'invoices' | 'statistics' | 'delivery_notes' | 'bulk_delete') || 'invoices'
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG);
+  const [bulkDeleteDocType, setBulkDeleteDocType] = useState<'delivery_notes' | 'invoices'>('delivery_notes');
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkSearchQuery, setBulkSearchQuery] = useState('');
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteFeedback, setBulkDeleteFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -637,6 +643,79 @@ export default function Sales() {
     profile?.role === 'super_admin' ||
     profile?.role === 'general_manager';
 
+  const canBulkDelete = profile?.role === 'super_admin';
+
+  function toggleBulkSelection(id: string) {
+    setBulkSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function getBulkDeleteList() {
+    const q = bulkSearchQuery.toLowerCase();
+    if (bulkDeleteDocType === 'delivery_notes') {
+      return deliveryNotes.filter((n) =>
+        n.note_number.toLowerCase().includes(q) ||
+        n.customer_name.toLowerCase().includes(q) ||
+        (n.vehicle_registration || '').toLowerCase().includes(q)
+      );
+    }
+    return invoices.filter((i) =>
+      i.invoice_number.toLowerCase().includes(q) ||
+      (i.delivery_note_number || '').toLowerCase().includes(q) ||
+      (i.client?.name || '').toLowerCase().includes(q)
+    );
+  }
+
+  function toggleBulkSelectAll() {
+    const items = getBulkDeleteList();
+    const ids = items.map((it: any) => it.id);
+    const allSelected = ids.length > 0 && ids.every((id) => bulkSelectedIds.has(id));
+    setBulkSelectedIds(allSelected ? new Set() : new Set(ids));
+  }
+
+  async function handleBulkDelete() {
+    if (bulkSelectedIds.size === 0) return;
+    setBulkDeleting(true);
+    setBulkDeleteFeedback(null);
+
+    try {
+      const ids = Array.from(bulkSelectedIds);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const id of ids) {
+        const rpcName = bulkDeleteDocType === 'delivery_notes' ? 'delete_delivery_note' : 'delete_invoice';
+        const paramName = bulkDeleteDocType === 'delivery_notes' ? 'p_dn_id' : 'p_invoice_id';
+        const { error } = await supabase.rpc(rpcName, { [paramName]: id });
+        if (error) {
+          console.error(`Failed to delete ${id}:`, error);
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      }
+
+      const label = bulkDeleteDocType === 'delivery_notes' ? 'delivery note' : 'invoice';
+      if (errorCount === 0) {
+        setBulkDeleteFeedback({ type: 'success', message: `Successfully deleted ${successCount} ${label}${successCount > 1 ? 's' : ''}.` });
+      } else {
+        setBulkDeleteFeedback({ type: 'error', message: `Deleted ${successCount}, failed ${errorCount}.` });
+      }
+
+      setShowBulkDeleteConfirm(false);
+      setBulkSelectedIds(new Set());
+      await loadData();
+    } catch (error: any) {
+      setBulkDeleteFeedback({ type: 'error', message: error.message || 'Bulk delete failed' });
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   const clientVehiclesForSelected = clientVehicles.filter(v => v.client_id === selectedClient);
 
   const getStatusBadge = (status: string, paymentMethod?: string | null) => {
@@ -740,6 +819,19 @@ export default function Sales() {
               <BarChart3 className="w-4 h-4" strokeWidth={1.5} />
               Statistics
             </button>
+            {canBulkDelete && (
+              <button
+                onClick={() => { setActiveTab('bulk_delete'); setSearchParams({ tab: 'bulk_delete' }); setBulkSelectedIds(new Set()); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-light transition-colors ${
+                  activeTab === 'bulk_delete'
+                    ? 'bg-white text-red-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                Bulk Delete
+              </button>
+            )}
           </div>
         </div>
         {activeTab === 'invoices' && (
@@ -822,6 +914,183 @@ export default function Sales() {
 
       {activeTab === 'statistics' ? (
         <SalesStatistics />
+      ) : activeTab === 'bulk_delete' ? (
+        <div className="space-y-4">
+          {bulkDeleteFeedback && (
+            <div className={`p-4 rounded-lg border ${
+              bulkDeleteFeedback.type === 'success'
+                ? 'bg-green-50 border-green-200 text-green-800'
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
+              <p className="text-sm font-light">{bulkDeleteFeedback.message}</p>
+            </div>
+          )}
+
+          <Card className="bg-amber-50 border-amber-200">
+            <div className="flex items-start gap-3">
+              <Trash2 className="w-5 h-5 text-amber-700 mt-0.5" strokeWidth={1.5} />
+              <div>
+                <p className="text-sm font-medium text-amber-900">Bulk Delete Mode</p>
+                <p className="text-xs font-light text-amber-800 mt-1">
+                  Select multiple documents to delete at once. Deleting invoices will restore sold fuel back to inventory and update tank levels. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => { setBulkDeleteDocType('delivery_notes'); setBulkSelectedIds(new Set()); }}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-light transition-colors ${
+                  bulkDeleteDocType === 'delivery_notes'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Truck className="w-4 h-4" strokeWidth={1.5} />
+                Delivery Notes ({deliveryNotes.length})
+              </button>
+              <button
+                onClick={() => { setBulkDeleteDocType('invoices'); setBulkSelectedIds(new Set()); }}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-light transition-colors ${
+                  bulkDeleteDocType === 'invoices'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <FileText className="w-4 h-4" strokeWidth={1.5} />
+                Invoices ({invoices.length})
+              </button>
+            </div>
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.5} />
+              <input
+                type="text"
+                placeholder={`Search ${bulkDeleteDocType === 'delivery_notes' ? 'delivery notes' : 'invoices'}...`}
+                value={bulkSearchQuery}
+                onChange={(e) => setBulkSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-sm font-light border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-black focus:border-black"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleBulkSelectAll}
+                className="flex items-center gap-2 text-sm font-light text-gray-700 hover:text-gray-900"
+              >
+                {(() => {
+                  const items = getBulkDeleteList();
+                  const allSelected = items.length > 0 && items.every((it: any) => bulkSelectedIds.has(it.id));
+                  return allSelected ? (
+                    <CheckSquare className="w-5 h-5 text-blue-600" strokeWidth={1.5} />
+                  ) : (
+                    <Square className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+                  );
+                })()}
+                Select All
+              </button>
+              <span className="text-sm font-light text-gray-500">
+                {bulkSelectedIds.size} of {getBulkDeleteList().length} selected
+              </span>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => setShowBulkDeleteConfirm(true)}
+              disabled={bulkSelectedIds.size === 0}
+              className="!text-red-600 !border-red-300 hover:!bg-red-50 disabled:!text-gray-400 disabled:!border-gray-200"
+            >
+              <Trash2 className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Delete Selected ({bulkSelectedIds.size})
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            {getBulkDeleteList().length === 0 ? (
+              <Card>
+                <p className="text-sm font-light text-gray-500 text-center py-8">
+                  No {bulkDeleteDocType === 'delivery_notes' ? 'delivery notes' : 'invoices'} found
+                </p>
+              </Card>
+            ) : bulkDeleteDocType === 'delivery_notes' ? (
+              (getBulkDeleteList() as typeof deliveryNotes).map((note) => (
+                <div
+                  key={note.id}
+                  onClick={() => toggleBulkSelection(note.id)}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    bulkSelectedIds.has(note.id)
+                      ? 'border-blue-300 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  {bulkSelectedIds.has(note.id) ? (
+                    <CheckSquare className="w-5 h-5 text-blue-600 shrink-0" strokeWidth={1.5} />
+                  ) : (
+                    <Square className="w-5 h-5 text-gray-400 shrink-0" strokeWidth={1.5} />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-light text-sm">{note.note_number}</span>
+                      {note.has_invoice && (
+                        <span className="text-xs font-light bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                          Invoiced
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-light text-gray-600 truncate mt-0.5">
+                      {note.customer_name} - {note.vehicle_registration} - {note.driver_name}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-light">{note.litres_reading?.toLocaleString() || note.litres_dispensed?.toLocaleString()}L</p>
+                    <p className="text-xs font-light text-gray-500">{format(new Date(note.created_at), 'dd/MM/yyyy')}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              (getBulkDeleteList() as typeof invoices).map((invoice) => (
+                <div
+                  key={invoice.id}
+                  onClick={() => toggleBulkSelection(invoice.id)}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    bulkSelectedIds.has(invoice.id)
+                      ? 'border-blue-300 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  {bulkSelectedIds.has(invoice.id) ? (
+                    <CheckSquare className="w-5 h-5 text-blue-600 shrink-0" strokeWidth={1.5} />
+                  ) : (
+                    <Square className="w-5 h-5 text-gray-400 shrink-0" strokeWidth={1.5} />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-light text-sm">{invoice.invoice_number}</span>
+                      <span className={`text-xs font-light px-1.5 py-0.5 rounded ${
+                        invoice.status === 'settled'
+                          ? 'bg-green-100 text-green-700'
+                          : invoice.status === 'void'
+                          ? 'bg-gray-100 text-gray-600'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {invoice.status}
+                      </span>
+                    </div>
+                    <p className="text-xs font-light text-gray-600 truncate mt-0.5">
+                      {invoice.client?.name || 'Walk-in'} - {invoice.delivery_note_number}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-light">{formatCurrency(invoice.total_amount)}</p>
+                    <p className="text-xs font-light text-gray-500">{format(new Date(invoice.invoice_date || invoice.created_at), 'dd/MM/yyyy')}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       ) : activeTab === 'delivery_notes' ? (
         <div className="space-y-4">
           {deliveryNotes.length === 0 ? (
@@ -1476,6 +1745,63 @@ export default function Sales() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={showBulkDeleteConfirm}
+        onClose={() => setShowBulkDeleteConfirm(false)}
+        title="Confirm Bulk Delete"
+      >
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm font-medium text-red-800">
+              You are about to delete {bulkSelectedIds.size} {bulkDeleteDocType === 'delivery_notes' ? 'delivery note' : 'invoice'}{bulkSelectedIds.size > 1 ? 's' : ''}. This action cannot be undone.
+            </p>
+            {bulkDeleteDocType === 'invoices' && (
+              <p className="text-xs font-light text-red-700 mt-2">
+                Sold fuel will be restored back to inventory and tank levels will be updated.
+              </p>
+            )}
+          </div>
+
+          <div className="max-h-64 overflow-y-auto space-y-1 border border-gray-200 rounded-lg p-2">
+            {Array.from(bulkSelectedIds).map((id) => {
+              if (bulkDeleteDocType === 'delivery_notes') {
+                const note = deliveryNotes.find((n) => n.id === id);
+                return note ? (
+                  <div key={id} className="flex items-center justify-between text-sm py-1.5 px-2 bg-gray-50 rounded">
+                    <span className="font-light">{note.note_number}</span>
+                    <span className="text-gray-500 font-light text-xs">{note.customer_name}</span>
+                  </div>
+                ) : null;
+              }
+              const inv = invoices.find((i) => i.id === id);
+              return inv ? (
+                <div key={id} className="flex items-center justify-between text-sm py-1.5 px-2 bg-gray-50 rounded">
+                  <span className="font-light">{inv.invoice_number}</span>
+                  <span className="text-gray-500 font-light text-xs">{formatCurrency(inv.total_amount)}</span>
+                </div>
+              ) : null;
+            })}
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="flex-1 !bg-red-600 hover:!bg-red-700 !text-white !border-red-600"
+            >
+              {bulkDeleting ? 'Deleting...' : `Delete ${bulkSelectedIds.size} Item${bulkSelectedIds.size > 1 ? 's' : ''}`}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setShowBulkDeleteConfirm(false)}
+              disabled={bulkDeleting}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
