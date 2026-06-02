@@ -155,6 +155,8 @@ export default function Sales() {
   const [bulkDeleteDocType, setBulkDeleteDocType] = useState<'delivery_notes' | 'invoices'>('delivery_notes');
   const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<string>>(new Set());
   const [bulkSearchQuery, setBulkSearchQuery] = useState('');
+  const [bulkCurrentPage, setBulkCurrentPage] = useState(1);
+  const [bulkItemsPerPage, setBulkItemsPerPage] = useState(25);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkDeleteFeedback, setBulkDeleteFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -941,7 +943,7 @@ export default function Sales() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => { setBulkDeleteDocType('delivery_notes'); setBulkSelectedIds(new Set()); }}
+                onClick={() => { setBulkDeleteDocType('delivery_notes'); setBulkSelectedIds(new Set()); setBulkCurrentPage(1); }}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-light transition-colors ${
                   bulkDeleteDocType === 'delivery_notes'
                     ? 'bg-white text-black shadow-sm'
@@ -952,7 +954,7 @@ export default function Sales() {
                 Delivery Notes ({deliveryNotes.length})
               </button>
               <button
-                onClick={() => { setBulkDeleteDocType('invoices'); setBulkSelectedIds(new Set()); }}
+                onClick={() => { setBulkDeleteDocType('invoices'); setBulkSelectedIds(new Set()); setBulkCurrentPage(1); }}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-light transition-colors ${
                   bulkDeleteDocType === 'invoices'
                     ? 'bg-white text-black shadow-sm'
@@ -969,7 +971,7 @@ export default function Sales() {
                 type="text"
                 placeholder={`Search ${bulkDeleteDocType === 'delivery_notes' ? 'delivery notes' : 'invoices'}...`}
                 value={bulkSearchQuery}
-                onChange={(e) => setBulkSearchQuery(e.target.value)}
+                onChange={(e) => { setBulkSearchQuery(e.target.value); setBulkCurrentPage(1); }}
                 className="w-full pl-9 pr-4 py-2 text-sm font-light border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-black focus:border-black"
               />
             </div>
@@ -1007,89 +1009,173 @@ export default function Sales() {
             </Button>
           </div>
 
-          <div className="space-y-2">
-            {getBulkDeleteList().length === 0 ? (
-              <Card>
-                <p className="text-sm font-light text-gray-500 text-center py-8">
-                  No {bulkDeleteDocType === 'delivery_notes' ? 'delivery notes' : 'invoices'} found
-                </p>
-              </Card>
-            ) : bulkDeleteDocType === 'delivery_notes' ? (
-              (getBulkDeleteList() as typeof deliveryNotes).map((note) => (
-                <div
-                  key={note.id}
-                  onClick={() => toggleBulkSelection(note.id)}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    bulkSelectedIds.has(note.id)
-                      ? 'border-blue-300 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  {bulkSelectedIds.has(note.id) ? (
-                    <CheckSquare className="w-5 h-5 text-blue-600 shrink-0" strokeWidth={1.5} />
+          {(() => {
+            const fullList = getBulkDeleteList();
+            const totalItems = fullList.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / bulkItemsPerPage));
+            const safePage = Math.min(bulkCurrentPage, totalPages);
+            const startIdx = (safePage - 1) * bulkItemsPerPage;
+            const endIdx = startIdx + bulkItemsPerPage;
+            const paginated = fullList.slice(startIdx, endIdx);
+
+            return (
+              <>
+                <div className="space-y-2">
+                  {totalItems === 0 ? (
+                    <Card>
+                      <p className="text-sm font-light text-gray-500 text-center py-8">
+                        No {bulkDeleteDocType === 'delivery_notes' ? 'delivery notes' : 'invoices'} found
+                      </p>
+                    </Card>
+                  ) : bulkDeleteDocType === 'delivery_notes' ? (
+                    (paginated as typeof deliveryNotes).map((note) => (
+                      <div
+                        key={note.id}
+                        onClick={() => toggleBulkSelection(note.id)}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          bulkSelectedIds.has(note.id)
+                            ? 'border-blue-300 bg-blue-50'
+                            : 'border-gray-200 bg-white hover:bg-gray-50'
+                        }`}
+                      >
+                        {bulkSelectedIds.has(note.id) ? (
+                          <CheckSquare className="w-5 h-5 text-blue-600 shrink-0" strokeWidth={1.5} />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400 shrink-0" strokeWidth={1.5} />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-light text-sm">{note.note_number}</span>
+                            {note.has_invoice && (
+                              <span className="text-xs font-light bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                                Invoiced
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-light text-gray-600 truncate mt-0.5">
+                            {note.customer_name} - {note.vehicle_registration} - {note.driver_name}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-light">{note.litres_reading?.toLocaleString() || note.litres_dispensed?.toLocaleString()}L</p>
+                          <p className="text-xs font-light text-gray-500">{format(new Date(note.created_at), 'dd/MM/yyyy')}</p>
+                        </div>
+                      </div>
+                    ))
                   ) : (
-                    <Square className="w-5 h-5 text-gray-400 shrink-0" strokeWidth={1.5} />
+                    (paginated as typeof invoices).map((invoice) => (
+                      <div
+                        key={invoice.id}
+                        onClick={() => toggleBulkSelection(invoice.id)}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          bulkSelectedIds.has(invoice.id)
+                            ? 'border-blue-300 bg-blue-50'
+                            : 'border-gray-200 bg-white hover:bg-gray-50'
+                        }`}
+                      >
+                        {bulkSelectedIds.has(invoice.id) ? (
+                          <CheckSquare className="w-5 h-5 text-blue-600 shrink-0" strokeWidth={1.5} />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400 shrink-0" strokeWidth={1.5} />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-light text-sm">{invoice.invoice_number}</span>
+                            <span className={`text-xs font-light px-1.5 py-0.5 rounded ${
+                              invoice.status === 'settled'
+                                ? 'bg-green-100 text-green-700'
+                                : invoice.status === 'void'
+                                ? 'bg-gray-100 text-gray-600'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {invoice.status}
+                            </span>
+                          </div>
+                          <p className="text-xs font-light text-gray-600 truncate mt-0.5">
+                            {invoice.client?.name || 'Walk-in'} - {invoice.delivery_note_number}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-light">{formatCurrency(invoice.total_amount)}</p>
+                          <p className="text-xs font-light text-gray-500">{format(new Date(invoice.invoice_date || invoice.created_at), 'dd/MM/yyyy')}</p>
+                        </div>
+                      </div>
+                    ))
                   )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-light text-sm">{note.note_number}</span>
-                      {note.has_invoice && (
-                        <span className="text-xs font-light bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-                          Invoiced
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs font-light text-gray-600 truncate mt-0.5">
-                      {note.customer_name} - {note.vehicle_registration} - {note.driver_name}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-light">{note.litres_reading?.toLocaleString() || note.litres_dispensed?.toLocaleString()}L</p>
-                    <p className="text-xs font-light text-gray-500">{format(new Date(note.created_at), 'dd/MM/yyyy')}</p>
-                  </div>
                 </div>
-              ))
-            ) : (
-              (getBulkDeleteList() as typeof invoices).map((invoice) => (
-                <div
-                  key={invoice.id}
-                  onClick={() => toggleBulkSelection(invoice.id)}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    bulkSelectedIds.has(invoice.id)
-                      ? 'border-blue-300 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  {bulkSelectedIds.has(invoice.id) ? (
-                    <CheckSquare className="w-5 h-5 text-blue-600 shrink-0" strokeWidth={1.5} />
-                  ) : (
-                    <Square className="w-5 h-5 text-gray-400 shrink-0" strokeWidth={1.5} />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-light text-sm">{invoice.invoice_number}</span>
-                      <span className={`text-xs font-light px-1.5 py-0.5 rounded ${
-                        invoice.status === 'settled'
-                          ? 'bg-green-100 text-green-700'
-                          : invoice.status === 'void'
-                          ? 'bg-gray-100 text-gray-600'
-                          : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {invoice.status}
+
+                {totalItems > 0 && (
+                  <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
+                    <div className="flex items-center gap-2 text-sm font-light text-gray-600">
+                      <span>Show</span>
+                      <select
+                        value={bulkItemsPerPage}
+                        onChange={(e) => { setBulkItemsPerPage(Number(e.target.value)); setBulkCurrentPage(1); }}
+                        className="px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-black focus:border-black"
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                      <span>
+                        Showing {startIdx + 1}-{Math.min(endIdx, totalItems)} of {totalItems}
                       </span>
                     </div>
-                    <p className="text-xs font-light text-gray-600 truncate mt-0.5">
-                      {invoice.client?.name || 'Walk-in'} - {invoice.delivery_note_number}
-                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setBulkCurrentPage(safePage - 1)}
+                        disabled={safePage === 1}
+                      >
+                        Previous
+                      </Button>
+
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNumber;
+                          if (totalPages <= 5) {
+                            pageNumber = i + 1;
+                          } else if (safePage <= 3) {
+                            pageNumber = i + 1;
+                          } else if (safePage >= totalPages - 2) {
+                            pageNumber = totalPages - 4 + i;
+                          } else {
+                            pageNumber = safePage - 2 + i;
+                          }
+
+                          return (
+                            <button
+                              key={pageNumber}
+                              onClick={() => setBulkCurrentPage(pageNumber)}
+                              className={`w-8 h-8 rounded-lg text-sm font-light transition-colors ${
+                                safePage === pageNumber
+                                  ? 'bg-black text-white'
+                                  : 'bg-white border border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              {pageNumber}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setBulkCurrentPage(safePage + 1)}
+                        disabled={safePage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-light">{formatCurrency(invoice.total_amount)}</p>
-                    <p className="text-xs font-light text-gray-500">{format(new Date(invoice.invoice_date || invoice.created_at), 'dd/MM/yyyy')}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       ) : activeTab === 'delivery_notes' ? (
         <div className="space-y-4">
