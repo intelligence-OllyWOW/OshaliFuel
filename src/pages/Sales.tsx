@@ -8,7 +8,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { Plus, Eye, Download, CheckCircle, XCircle, Clock, CreditCard, Banknote, Building2, Search, BarChart3, FileText, Truck, Bell, Printer } from 'lucide-react';
+import { Plus, Eye, Download, CheckCircle, XCircle, Clock, CreditCard, Banknote, Building2, Search, BarChart3, FileText, Truck, Bell, Printer, Filter, Calendar } from 'lucide-react';
 import SalesStatistics from '../components/SalesStatistics';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
@@ -142,6 +142,10 @@ export default function Sales() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
+  const [filterStatus, setFilterStatus] = useState<string>(searchParams.get('status') || 'all');
+  const [filterClient, setFilterClient] = useState<string>('all');
+  const [filterDateFrom, setFilterDateFrom] = useState<string>('');
+  const [filterDateTo, setFilterDateTo] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'invoices' | 'statistics' | 'delivery_notes'>(
     (searchParams.get('tab') as 'invoices' | 'statistics' | 'delivery_notes') || 'invoices'
   );
@@ -667,12 +671,24 @@ export default function Sales() {
   };
 
   const filteredInvoices = invoices.filter((invoice) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    const clientName = invoice.client?.name?.toLowerCase() || 'walk-in';
-    const invoiceNumber = invoice.invoice_number?.toLowerCase() || '';
-    const deliveryNote = invoice.delivery_note_number?.toLowerCase() || '';
-    return clientName.includes(query) || invoiceNumber.includes(query) || deliveryNote.includes(query);
+    if (filterStatus !== 'all' && invoice.status !== filterStatus) return false;
+    if (filterClient !== 'all' && invoice.client_id !== filterClient) return false;
+    if (filterDateFrom) {
+      const invoiceDate = invoice.invoice_date || invoice.created_at.split('T')[0];
+      if (invoiceDate < filterDateFrom) return false;
+    }
+    if (filterDateTo) {
+      const invoiceDate = invoice.invoice_date || invoice.created_at.split('T')[0];
+      if (invoiceDate > filterDateTo) return false;
+    }
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const clientName = invoice.client?.name?.toLowerCase() || 'walk-in';
+      const invoiceNumber = invoice.invoice_number?.toLowerCase() || '';
+      const deliveryNote = invoice.delivery_note_number?.toLowerCase() || '';
+      return clientName.includes(query) || invoiceNumber.includes(query) || deliveryNote.includes(query);
+    }
+    return true;
   });
 
   const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
@@ -747,6 +763,62 @@ export default function Sales() {
           </div>
         )}
       </div>
+
+      {/* Invoice Filters */}
+      {activeTab === 'invoices' && (
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <Filter className="w-4 h-4 text-gray-400" strokeWidth={1} />
+          <select
+            value={filterStatus}
+            onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+            className="text-sm font-light border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-gray-300"
+          >
+            <option value="all">All statuses</option>
+            <option value="unsettled">Unsettled</option>
+            <option value="settled">Settled</option>
+            <option value="void">Void</option>
+          </select>
+          <select
+            value={filterClient}
+            onChange={(e) => { setFilterClient(e.target.value); setCurrentPage(1); }}
+            className="text-sm font-light border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-gray-300"
+          >
+            <option value="all">All customers</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-gray-400" strokeWidth={1} />
+            <input
+              type="date"
+              value={filterDateFrom}
+              onChange={(e) => { setFilterDateFrom(e.target.value); setCurrentPage(1); }}
+              className="text-xs font-light border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-gray-300"
+            />
+            <span className="text-xs text-gray-400">to</span>
+            <input
+              type="date"
+              value={filterDateTo}
+              onChange={(e) => { setFilterDateTo(e.target.value); setCurrentPage(1); }}
+              className="text-xs font-light border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-gray-300"
+            />
+          </div>
+          {(filterStatus !== 'all' || filterClient !== 'all' || filterDateFrom || filterDateTo) && (
+            <button
+              onClick={() => { setFilterStatus('all'); setFilterClient('all'); setFilterDateFrom(''); setFilterDateTo(''); setCurrentPage(1); }}
+              className="text-xs font-light text-gray-500 hover:text-gray-800 underline transition-colors"
+            >
+              Clear filters
+            </button>
+          )}
+          {filteredInvoices.length > 0 && (filterStatus !== 'all' || filterClient !== 'all' || filterDateFrom || filterDateTo) && (
+            <span className="ml-auto text-xs font-light text-gray-500">
+              {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} · {formatCurrency(filteredInvoices.reduce((s, i) => s + i.total_amount, 0))}
+            </span>
+          )}
+        </div>
+      )}
 
       {activeTab === 'statistics' ? (
         <SalesStatistics />
