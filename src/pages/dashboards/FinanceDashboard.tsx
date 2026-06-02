@@ -5,7 +5,8 @@ import Card from '../../components/ui/Card';
 import RevenueTrendChart from '../../components/RevenueTrendChart';
 import HorizontalBarList from '../../components/charts/HorizontalBarList';
 import Select from '../../components/ui/Select';
-import { DollarSign, Receipt, FileText, TrendingUp, Calendar, AlertCircle, CheckCircle, Wallet } from 'lucide-react';
+import Modal from '../../components/ui/Modal';
+import { DollarSign, Receipt, FileText, TrendingUp, Calendar, AlertCircle, CheckCircle, Wallet, Search, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency, formatNumber } from '../../lib/utils';
@@ -30,6 +31,28 @@ interface RecentPO {
   liters_ordered: number;
 }
 
+type DrillDownType = 'revenue' | 'purchases' | 'expenses' | 'settled' | 'unsettled' | null;
+
+interface DrillDownRecord {
+  id: string;
+  label: string;
+  sublabel: string;
+  amount: number;
+  date: string;
+  status?: string;
+}
+
+function downloadCSV(filename: string, rows: string[][]): void {
+  const csv = rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 type DatePreset = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'this_year' | 'custom';
 
 export default function FinanceDashboard() {
@@ -48,6 +71,11 @@ export default function FinanceDashboard() {
   const [datePreset, setDatePreset] = useState<DatePreset>('this_month');
   const [customFrom, setCustomFrom] = useState<string>(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [customTo, setCustomTo] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+
+  const [drillDown, setDrillDown] = useState<DrillDownType>(null);
+  const [drillDownRecords, setDrillDownRecords] = useState<DrillDownRecord[]>([]);
+  const [drillDownLoading, setDrillDownLoading] = useState(false);
+  const [drillDownSearch, setDrillDownSearch] = useState('');
 
   useEffect(() => {
     if (datePreset === 'custom' && (!customFrom || !customTo)) return;
@@ -194,6 +222,158 @@ export default function FinanceDashboard() {
     }
   }
 
+  function getDateRange(): { startISO: string; endISO: string } {
+    const now = new Date();
+    let start: Date;
+    let end: Date;
+    if (datePreset === 'custom') {
+      start = startOfDay(new Date(customFrom));
+      end = endOfDay(new Date(customTo));
+    } else {
+      switch (datePreset) {
+        case 'today': start = startOfDay(now); end = endOfDay(now); break;
+        case 'yesterday': start = startOfDay(subDays(now, 1)); end = endOfDay(subDays(now, 1)); break;
+        case 'this_week': start = startOfWeek(now, { weekStartsOn: 1 }); end = endOfDay(now); break;
+        case 'last_week': { const lw = subWeeks(now, 1); start = startOfWeek(lw, { weekStartsOn: 1 }); end = endOfWeek(lw, { weekStartsOn: 1 }); break; }
+        case 'last_month': { const lm = subMonths(now, 1); start = startOfMonth(lm); end = endOfMonth(lm); break; }
+        case 'this_year': start = startOfYear(now); end = endOfYear(now); break;
+        default: start = startOfMonth(now); end = endOfMonth(now);
+      }
+    }
+    return { startISO: start.toISOString(), endISO: end.toISOString() };
+  }
+
+  async function handleDrillDown(type: DrillDownType) {
+    if (!type) return;
+    setDrillDown(type);
+    setDrillDownLoading(true);
+    setDrillDownSearch('');
+    setDrillDownRecords([]);
+
+    const { startISO, endISO } = getDateRange();
+
+    try {
+      let records: DrillDownRecord[] = [];
+
+      if (type === 'revenue') {
+        const { data } = await supabase
+          .from('invoices')
+          .select('id, invoice_number, total_amount, status, created_at, client:client_id(name)')
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
+          .order('created_at', { ascending: false });
+        records = (data || []).map((inv: any) => ({
+          id: inv.id,
+          label: inv.invoice_number,
+          sublabel: inv.client?.name || 'Walk-in',
+          amount: inv.total_amount,
+          date: inv.created_at,
+          status: inv.status,
+        }));
+      } else if (type === 'purchases') {
+        const { data } = await supabase
+          .from('purchase_orders')
+          .select('id, po_number, total_amount, status, supplier_name, created_at, liters_ordered')
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
+          .order('created_at', { ascending: false });
+        records = (data || []).map((po: any) => ({
+          id: po.id,
+          label: po.po_number,
+          sublabel: `${po.supplier_name} · ${formatNumber(po.liters_ordered)}L`,
+          amount: po.total_amount,
+          date: po.created_at,
+          status: po.status,
+        }));
+      } else if (type === 'expenses') {
+        const { data } = await supabase
+          .from('expenses')
+          .select('id, expense_number, title, amount, status, approved_at, submitter:profiles!expenses_submitted_by_fkey(full_name)')
+          .eq('status', 'approved')
+          .gte('approved_at', startISO)
+          .lte('approved_at', endISO)
+          .order('approved_at', { ascending: false });
+        records = (data || []).map((exp: any) => ({
+          id: exp.id,
+          label: exp.expense_number,
+          sublabel: `${exp.title} · ${exp.submitter?.full_name || ''}`,
+          amount: exp.amount,
+          date: exp.approved_at,
+          status: exp.status,
+        }));
+      } else if (type === 'settled') {
+        const { data } = await supabase
+          .from('invoices')
+          .select('id, invoice_number, total_amount, status, settled_at, created_at, payment_method, client:client_id(name)')
+          .eq('status', 'settled')
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
+          .order('settled_at', { ascending: false });
+        records = (data || []).map((inv: any) => ({
+          id: inv.id,
+          label: inv.invoice_number,
+          sublabel: `${inv.client?.name || 'Walk-in'} · ${inv.payment_method || ''}`,
+          amount: inv.total_amount,
+          date: inv.settled_at || inv.created_at,
+          status: 'settled',
+        }));
+      } else if (type === 'unsettled') {
+        const { data } = await supabase
+          .from('invoices')
+          .select('id, invoice_number, total_amount, status, created_at, client:client_id(name)')
+          .eq('status', 'unsettled')
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
+          .order('created_at', { ascending: false });
+        records = (data || []).map((inv: any) => ({
+          id: inv.id,
+          label: inv.invoice_number,
+          sublabel: inv.client?.name || 'Walk-in',
+          amount: inv.total_amount,
+          date: inv.created_at,
+          status: 'unsettled',
+        }));
+      }
+
+      setDrillDownRecords(records);
+    } catch (error) {
+      console.error('Error loading drill-down data:', error);
+    } finally {
+      setDrillDownLoading(false);
+    }
+  }
+
+  const drillDownTitles: Record<string, string> = {
+    revenue: `${periodLabels[datePreset] || ''} Revenue Transactions`,
+    purchases: `${periodLabels[datePreset] || ''} Purchase Orders`,
+    expenses: `${periodLabels[datePreset] || ''} Approved Expenses`,
+    settled: 'Settled Invoices',
+    unsettled: 'Unsettled Invoices',
+  };
+
+  const filteredDrillDown = drillDownRecords.filter((r) => {
+    if (!drillDownSearch) return true;
+    const q = drillDownSearch.toLowerCase();
+    return r.label.toLowerCase().includes(q) || r.sublabel.toLowerCase().includes(q);
+  });
+
+  function handleDrillDownExport() {
+    if (!drillDown) return;
+    const rows = [
+      ['Reference', 'Details', 'Amount (N$)', 'Date', 'Status'],
+      ...filteredDrillDown.map((r) => [
+        r.label,
+        r.sublabel,
+        r.amount.toFixed(2),
+        format(new Date(r.date), 'yyyy-MM-dd HH:mm'),
+        r.status || '',
+      ]),
+      [],
+      ['Total', '', filteredDrillDown.reduce((s, r) => s + r.amount, 0).toFixed(2), '', ''],
+    ];
+    downloadCSV(`finance_${drillDown}_report.csv`, rows);
+  }
+
   const periodLabels: Record<DatePreset, string> = {
     today: "Today's",
     yesterday: "Yesterday's",
@@ -208,6 +388,7 @@ export default function FinanceDashboard() {
 
   const statCards = [
     {
+      key: 'revenue' as DrillDownType,
       label: `${periodLabel} Revenue`,
       value: formatCurrency(stats.monthRevenue),
       icon: <DollarSign strokeWidth={1} />,
@@ -215,6 +396,7 @@ export default function FinanceDashboard() {
       bg: 'bg-emerald-50',
     },
     {
+      key: 'purchases' as DrillDownType,
       label: `${periodLabel} Purchases`,
       value: formatCurrency(stats.totalPurchases),
       icon: <TrendingUp strokeWidth={1} />,
@@ -222,6 +404,7 @@ export default function FinanceDashboard() {
       bg: 'bg-red-50',
     },
     {
+      key: 'expenses' as DrillDownType,
       label: `${periodLabel} Expenses`,
       value: formatCurrency(stats.approvedExpenses),
       icon: <Wallet strokeWidth={1} />,
@@ -229,6 +412,7 @@ export default function FinanceDashboard() {
       bg: 'bg-orange-50',
     },
     {
+      key: 'settled' as DrillDownType,
       label: 'Settled Invoices',
       value: stats.settledInvoices.toString(),
       icon: <Receipt strokeWidth={1} />,
@@ -236,6 +420,7 @@ export default function FinanceDashboard() {
       bg: 'bg-green-50',
     },
     {
+      key: 'unsettled' as DrillDownType,
       label: 'Unsettled Invoices',
       value: stats.unsettledInvoices.toString(),
       icon: <FileText strokeWidth={1} />,
@@ -419,21 +604,115 @@ export default function FinanceDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {statCards.map((stat) => (
               <Card key={stat.label}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-xs font-light text-gray-500 mb-2">{stat.label}</div>
-                    <div className="text-2xl font-light">{stat.value}</div>
+                <button
+                  onClick={() => handleDrillDown(stat.key)}
+                  className="w-full text-left group"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-xs font-light text-gray-500 mb-2 group-hover:text-gray-700 transition-colors">{stat.label}</div>
+                      <div className="text-2xl font-light">{stat.value}</div>
+                      <div className="text-xs font-light text-gray-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Click for details</div>
+                    </div>
+                    <div className={`${stat.color} ${stat.bg} w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform`}>
+                      {stat.icon}
+                    </div>
                   </div>
-                  <div className={`${stat.color} ${stat.bg} w-12 h-12 rounded-xl flex items-center justify-center`}>
-                    {stat.icon}
-                  </div>
-                </div>
+                </button>
               </Card>
             ))}
           </div>
 
         </div>
       )}
+
+      {/* Drill-Down Modal */}
+      <Modal
+        isOpen={drillDown !== null}
+        onClose={() => { setDrillDown(null); setDrillDownRecords([]); setDrillDownSearch(''); }}
+        title={drillDown ? drillDownTitles[drillDown] : ''}
+        size="xl"
+      >
+        <div className="space-y-4">
+          {/* Toolbar */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1.5} />
+              <input
+                type="text"
+                placeholder="Search by reference or details..."
+                value={drillDownSearch}
+                onChange={(e) => setDrillDownSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-sm font-light border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-300"
+              />
+            </div>
+            <button
+              onClick={handleDrillDownExport}
+              disabled={filteredDrillDown.length === 0}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+            >
+              <Download size={13} />
+              Export CSV
+            </button>
+          </div>
+
+          {/* Summary */}
+          <div className="flex items-center gap-4 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
+            <div>
+              <p className="text-xs font-light text-gray-500">Records</p>
+              <p className="text-lg font-semibold" style={{ color: '#1B2D5B' }}>{filteredDrillDown.length}</p>
+            </div>
+            <div className="h-8 w-px bg-gray-200" />
+            <div>
+              <p className="text-xs font-light text-gray-500">Total Amount</p>
+              <p className="text-lg font-semibold" style={{ color: '#1B2D5B' }}>
+                {formatCurrency(filteredDrillDown.reduce((s, r) => s + r.amount, 0))}
+              </p>
+            </div>
+          </div>
+
+          {/* Records list */}
+          {drillDownLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-6 h-6 border-2 border-gray-300 border-t-black rounded-full animate-spin" />
+            </div>
+          ) : filteredDrillDown.length === 0 ? (
+            <div className="text-center py-12 text-sm font-light text-gray-400">
+              No records found
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {filteredDrillDown.map((record) => (
+                <div key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-light">{record.label}</span>
+                      {record.status && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-light ${
+                          record.status === 'settled' || record.status === 'approved' || record.status === 'paid'
+                            ? 'bg-green-100 text-green-700'
+                            : record.status === 'unsettled' || record.status === 'submitted'
+                            ? 'bg-amber-100 text-amber-700'
+                            : record.status === 'void' || record.status === 'rejected'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {record.status}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-light text-gray-500 mt-0.5 truncate">{record.sublabel}</p>
+                  </div>
+                  <div className="text-right shrink-0 ml-4">
+                    <div className="text-sm font-light">{formatCurrency(record.amount)}</div>
+                    <div className="text-xs font-light text-gray-400">{format(new Date(record.date), 'MMM d, yyyy')}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
