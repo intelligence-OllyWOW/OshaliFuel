@@ -53,12 +53,23 @@ export interface SettlementBucket {
   amount: number;
 }
 
+export interface SettlementInvoice {
+  id: string;
+  invoice_number: string;
+  client_name: string;
+  invoice_date: string;
+  total_amount: number;
+  status: string;
+  liters_sold: number;
+}
+
 export interface SettlementData {
   settled: SettlementBucket;
   unsettled: SettlementBucket;
   void: SettlementBucket;
   totalCount: number;
   totalAmount: number;
+  invoices: SettlementInvoice[];
 }
 
 export interface ProcurementData {
@@ -164,12 +175,13 @@ export function useFinanceReports(dateRange: DateRange): FinanceReportsResult {
         .lte('created_at', toISO)
         .limit(50000),
 
-      // 4. Settlement rate — all invoices in range grouped by status client-side
+      // 4. Settlement rate — all invoices in range with details for drill-down
       supabase
         .from('invoices')
-        .select('status, total_amount')
+        .select('id, invoice_number, status, total_amount, liters_sold, invoice_date, created_at, client:client_id(name)')
         .gte('created_at', fromISO)
         .lte('created_at', toISO)
+        .order('created_at', { ascending: false })
         .limit(50000),
 
       // 5. Procurement costs — goods_received rows in range
@@ -285,10 +297,22 @@ export function useFinanceReports(dateRange: DateRange): FinanceReportsResult {
         void: { count: 0, amount: 0 },
       };
 
-      rows.forEach((inv) => {
+      const invoices: SettlementInvoice[] = [];
+
+      rows.forEach((inv: any) => {
         const key = inv.status in buckets ? inv.status : 'unsettled';
         buckets[key].count += 1;
         buckets[key].amount += Number(inv.total_amount) || 0;
+
+        invoices.push({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          client_name: inv.client?.name || 'Walk-in',
+          invoice_date: inv.invoice_date || inv.created_at,
+          total_amount: Number(inv.total_amount) || 0,
+          status: inv.status,
+          liters_sold: Number(inv.liters_sold) || 0,
+        });
       });
 
       setSettlementRate({
@@ -297,6 +321,7 @@ export function useFinanceReports(dateRange: DateRange): FinanceReportsResult {
         void: buckets.void,
         totalCount: rows.length,
         totalAmount: rows.reduce((s, r) => s + (Number(r.total_amount) || 0), 0),
+        invoices,
       });
     }
 

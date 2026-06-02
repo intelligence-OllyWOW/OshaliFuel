@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
 import {
   BarChart,
   Bar,
@@ -8,12 +9,13 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Download, Printer, TrendingUp, Users, CheckCircle, ShoppingCart, DollarSign } from 'lucide-react';
+import { Download, Printer, TrendingUp, Users, CheckCircle, ShoppingCart, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   useFinanceReports,
   getPresetDateRange,
   DatePreset,
   DateRange,
+  SettlementInvoice,
 } from '../hooks/useFinanceReports';
 import OshaliLoader from './OshaliLoader';
 import { formatCurrency } from '../lib/utils';
@@ -84,6 +86,8 @@ export default function FinanceReports() {
     ...todayRange,
     preset: 'monthly',
   });
+  const [settlementFilter, setSettlementFilter] = useState<'all' | 'settled' | 'unsettled' | 'void'>('all');
+  const [showDrillDown, setShowDrillDown] = useState(false);
 
   const { revenue, profitMargin, topClients, settlementRate, procurementCosts, loading } =
     useFinanceReports(dateRange);
@@ -143,7 +147,19 @@ export default function FinanceReports() {
 
   function exportSettlementCSV() {
     if (!settlementRate) return;
+    const filteredInvoices = getFilteredInvoices();
     const rows = [
+      ['Invoice #', 'Customer', 'Date', 'Liters', 'Amount (N$)', 'Status'],
+      ...filteredInvoices.map((inv) => [
+        inv.invoice_number,
+        inv.client_name,
+        format(new Date(inv.invoice_date), 'yyyy-MM-dd'),
+        inv.liters_sold.toFixed(2),
+        inv.total_amount.toFixed(2),
+        inv.status,
+      ]),
+      [],
+      ['Summary'],
       ['Status', 'Count', 'Amount (N$)'],
       ['Settled', String(settlementRate.settled.count), settlementRate.settled.amount.toFixed(2)],
       ['Unsettled', String(settlementRate.unsettled.count), settlementRate.unsettled.amount.toFixed(2)],
@@ -151,7 +167,14 @@ export default function FinanceReports() {
       [],
       ['Total', String(settlementRate.totalCount), settlementRate.totalAmount.toFixed(2)],
     ];
-    downloadCSV(`settlement_${dateRange.from}_${dateRange.to}.csv`, rows);
+    const filterLabel = settlementFilter === 'all' ? '' : `_${settlementFilter}`;
+    downloadCSV(`invoices${filterLabel}_${dateRange.from}_${dateRange.to}.csv`, rows);
+  }
+
+  function getFilteredInvoices(): SettlementInvoice[] {
+    if (!settlementRate) return [];
+    if (settlementFilter === 'all') return settlementRate.invoices;
+    return settlementRate.invoices.filter((inv) => inv.status === settlementFilter);
   }
 
   function exportProcurementCSV() {
@@ -483,6 +506,120 @@ export default function FinanceReports() {
                   <span className="text-gray-500">Total Amount</span>
                   <span className="font-semibold" style={{ color: '#1B2D5B' }}>{formatCurrency(settlementRate.totalAmount)}</span>
                 </div>
+
+                {/* Drill-down toggle */}
+                <div className="pt-3 border-t border-gray-100">
+                  <button
+                    onClick={() => setShowDrillDown(!showDrillDown)}
+                    className="flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80"
+                    style={{ color: '#1B2D5B' }}
+                  >
+                    {showDrillDown ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    {showDrillDown ? 'Hide' : 'View'} Individual Invoices
+                  </button>
+                </div>
+
+                {/* Drill-down table */}
+                {showDrillDown && (
+                  <div className="space-y-3">
+                    {/* Status filter tabs */}
+                    <div className="flex flex-wrap gap-2">
+                      {(['all', 'settled', 'unsettled', 'void'] as const).map((status) => {
+                        const count = status === 'all'
+                          ? settlementRate.totalCount
+                          : settlementRate[status === 'void' ? 'void' : status].count;
+                        return (
+                          <button
+                            key={status}
+                            onClick={() => setSettlementFilter(status)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                            style={
+                              settlementFilter === status
+                                ? { backgroundColor: '#1B2D5B', color: 'white' }
+                                : { backgroundColor: '#f1f5f9', color: '#475569' }
+                            }
+                          >
+                            {status.charAt(0).toUpperCase() + status.slice(1)} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Invoice table */}
+                    <div className="overflow-x-auto rounded-lg border border-gray-100">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
+                            <th className="px-3 py-2.5 font-medium">Invoice #</th>
+                            <th className="px-3 py-2.5 font-medium">Customer</th>
+                            <th className="px-3 py-2.5 font-medium">Date</th>
+                            <th className="px-3 py-2.5 font-medium text-right">Liters</th>
+                            <th className="px-3 py-2.5 font-medium text-right">Amount</th>
+                            <th className="px-3 py-2.5 font-medium">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {getFilteredInvoices().length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="px-3 py-6 text-center text-gray-400">
+                                No invoices in this category.
+                              </td>
+                            </tr>
+                          ) : (
+                            getFilteredInvoices().map((inv) => (
+                              <tr key={inv.id} className="hover:bg-gray-50">
+                                <td className="px-3 py-2.5 font-medium" style={{ color: '#1B2D5B' }}>
+                                  {inv.invoice_number}
+                                </td>
+                                <td className="px-3 py-2.5 text-gray-700">{inv.client_name}</td>
+                                <td className="px-3 py-2.5 text-gray-600">
+                                  {format(new Date(inv.invoice_date), 'dd/MM/yyyy')}
+                                </td>
+                                <td className="px-3 py-2.5 text-right text-gray-600">
+                                  {inv.liters_sold.toFixed(2)} L
+                                </td>
+                                <td className="px-3 py-2.5 text-right font-medium" style={{ color: '#1B2D5B' }}>
+                                  {formatCurrency(inv.total_amount)}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <span
+                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                    style={
+                                      inv.status === 'settled'
+                                        ? { backgroundColor: '#dcfce7', color: '#166534' }
+                                        : inv.status === 'void'
+                                        ? { backgroundColor: '#f3f4f6', color: '#6b7280' }
+                                        : { backgroundColor: '#fef3c7', color: '#92400e' }
+                                    }
+                                  >
+                                    {inv.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                        {getFilteredInvoices().length > 0 && (
+                          <tfoot>
+                            <tr className="border-t border-gray-200 bg-gray-50">
+                              <td colSpan={3} className="px-3 py-2.5 text-xs font-medium text-gray-500">
+                                Total: {getFilteredInvoices().length} invoice{getFilteredInvoices().length !== 1 ? 's' : ''}
+                              </td>
+                              <td className="px-3 py-2.5 text-right text-xs font-medium text-gray-600">
+                                {getFilteredInvoices().reduce((s, i) => s + i.liters_sold, 0).toFixed(2)} L
+                              </td>
+                              <td className="px-3 py-2.5 text-right text-xs font-bold" style={{ color: '#1B2D5B' }}>
+                                {formatCurrency(getFilteredInvoices().reduce((s, i) => s + i.total_amount, 0))}
+                              </td>
+                              <td className="px-3 py-2.5"></td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-end no-print">
                   <button
                     onClick={exportSettlementCSV}
