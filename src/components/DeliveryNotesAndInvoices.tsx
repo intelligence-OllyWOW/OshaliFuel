@@ -7,7 +7,7 @@ import Button from './ui/Button';
 import Modal from './ui/Modal';
 import Input from './ui/Input';
 import Select from './ui/Select';
-import { FileText, Printer, Download, Plus, Eye, Search, ChevronDown } from 'lucide-react';
+import { FileText, Printer, Download, Plus, Eye, Search, ChevronDown, Trash2, CheckSquare, Square, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
@@ -84,6 +84,10 @@ export default function DeliveryNotesAndInvoices() {
   const [submitting, setSubmitting] = useState(false);
   const [effectivePrice, setEffectivePrice] = useState<number>(0);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -367,6 +371,69 @@ export default function DeliveryNotesAndInvoices() {
     inv.client?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  function toggleSelection(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    const currentItems = activeTab === 'delivery_notes' ? filteredDeliveryNotes : filteredInvoices;
+    const allIds = currentItems.map((item) => item.id);
+    const allSelected = allIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allIds));
+    }
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    setFeedback(null);
+
+    try {
+      const ids = Array.from(selectedIds);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const id of ids) {
+        const rpcName = activeTab === 'delivery_notes' ? 'delete_delivery_note' : 'delete_invoice';
+        const paramName = activeTab === 'delivery_notes' ? 'p_dn_id' : 'p_invoice_id';
+        const { error } = await supabase.rpc(rpcName, { [paramName]: id });
+        if (error) {
+          console.error(`Failed to delete ${id}:`, error);
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      }
+
+      if (errorCount === 0) {
+        setFeedback({ type: 'success', message: `Successfully deleted ${successCount} ${activeTab === 'delivery_notes' ? 'delivery note' : 'invoice'}${successCount > 1 ? 's' : ''}` });
+      } else {
+        setFeedback({ type: 'error', message: `Deleted ${successCount}, failed ${errorCount}` });
+      }
+
+      setShowBulkDeleteModal(false);
+      exitSelectMode();
+      loadData();
+    } catch (error: any) {
+      setFeedback({ type: 'error', message: error.message || 'Bulk delete failed' });
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   if (loading) return <OshaliLoader variant="inline" />;
 
   return (
@@ -386,7 +453,7 @@ export default function DeliveryNotesAndInvoices() {
       {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-200">
         <button
-          onClick={() => setActiveTab('delivery_notes')}
+          onClick={() => { setActiveTab('delivery_notes'); setSelectedIds(new Set()); }}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
             activeTab === 'delivery_notes'
               ? 'border-blue-600 text-blue-600'
@@ -397,7 +464,7 @@ export default function DeliveryNotesAndInvoices() {
           Delivery Notes ({deliveryNotes.length})
         </button>
         <button
-          onClick={() => setActiveTab('invoices')}
+          onClick={() => { setActiveTab('invoices'); setSelectedIds(new Set()); }}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
             activeTab === 'invoices'
               ? 'border-blue-600 text-blue-600'
@@ -409,17 +476,73 @@ export default function DeliveryNotesAndInvoices() {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
+      {/* Search & Select Mode */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        {!selectMode ? (
+          <Button
+            variant="secondary"
+            onClick={() => setSelectMode(true)}
+            className="flex items-center gap-2 whitespace-nowrap"
+          >
+            <CheckSquare className="w-4 h-4" strokeWidth={1.5} />
+            Select
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            onClick={exitSelectMode}
+            className="flex items-center gap-2 whitespace-nowrap"
+          >
+            <XCircle className="w-4 h-4" strokeWidth={1.5} />
+            Cancel
+          </Button>
+        )}
       </div>
+
+      {/* Bulk Action Bar */}
+      {selectMode && (
+        <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleSelectAll}
+              className="flex items-center gap-2 text-sm font-light text-gray-700 hover:text-gray-900"
+            >
+              {(() => {
+                const currentItems = activeTab === 'delivery_notes' ? filteredDeliveryNotes : filteredInvoices;
+                const allSelected = currentItems.length > 0 && currentItems.every((item) => selectedIds.has(item.id));
+                return allSelected ? (
+                  <CheckSquare className="w-4 h-4 text-blue-600" strokeWidth={1.5} />
+                ) : (
+                  <Square className="w-4 h-4" strokeWidth={1.5} />
+                );
+              })()}
+              Select All
+            </button>
+            <span className="text-sm font-light text-gray-500">
+              {selectedIds.size} selected
+            </span>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => setShowBulkDeleteModal(true)}
+            disabled={selectedIds.size === 0}
+            className="flex items-center gap-2 !text-red-600 !border-red-200 hover:!bg-red-50 disabled:!text-gray-400 disabled:!border-gray-200"
+          >
+            <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+            Delete ({selectedIds.size})
+          </Button>
+        </div>
+      )}
 
       {/* Delivery Notes Tab */}
       {activeTab === 'delivery_notes' && (
@@ -432,42 +555,58 @@ export default function DeliveryNotesAndInvoices() {
             filteredDeliveryNotes.map((note) => (
               <Card key={note.id}>
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="font-semibold text-lg text-gray-900">{note.note_number}</p>
-                    <p className="text-gray-600">{note.customer_name}</p>
-                    <p className="text-sm text-gray-500">Vehicle: {note.vehicle_registration}</p>
-                    <p className="text-sm text-gray-500">Driver: {note.driver_name}</p>
-                    <p className="text-sm text-gray-500">Liters Dispensed: {note.litres_dispensed.toFixed(2)}L</p>
-                    <p className="text-sm text-gray-500">
-                      Created: {format(new Date(note.created_at), 'dd/MM/yyyy HH:mm')}
-                    </p>
-                    {note.has_invoice && (
-                      <p className="text-sm text-green-600 font-medium mt-2">✓ Invoice Created</p>
+                  <div className="flex items-start gap-3 flex-1">
+                    {selectMode && (
+                      <button
+                        onClick={() => toggleSelection(note.id)}
+                        className="mt-1 shrink-0"
+                      >
+                        {selectedIds.has(note.id) ? (
+                          <CheckSquare className="w-5 h-5 text-blue-600" strokeWidth={1.5} />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+                        )}
+                      </button>
                     )}
+                    <div className="flex-1">
+                      <p className="font-semibold text-lg text-gray-900">{note.note_number}</p>
+                      <p className="text-gray-600">{note.customer_name}</p>
+                      <p className="text-sm text-gray-500">Vehicle: {note.vehicle_registration}</p>
+                      <p className="text-sm text-gray-500">Driver: {note.driver_name}</p>
+                      <p className="text-sm text-gray-500">Liters Dispensed: {note.litres_dispensed.toFixed(2)}L</p>
+                      <p className="text-sm text-gray-500">
+                        Created: {format(new Date(note.created_at), 'dd/MM/yyyy HH:mm')}
+                      </p>
+                      {note.has_invoice && (
+                        <p className="text-sm text-green-600 font-medium mt-2">Invoice Created</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => handlePrintDeliveryNote(note)}
-                      className="flex items-center gap-2"
-                    >
-                      <Printer className="w-4 h-4" />
-                      Print
-                    </Button>
-                    {!note.has_invoice && (
+                  {!selectMode && (
+                    <div className="flex gap-2">
                       <Button
-                        variant="primary"
-                        onClick={() => {
-                          setSelectedDeliveryNote(note);
-                          setShowInvoiceModal(true);
-                        }}
+                        variant="secondary"
+                        onClick={() => handlePrintDeliveryNote(note)}
                         className="flex items-center gap-2"
                       >
-                        <Plus className="w-4 h-4" />
-                        Invoice
+                        <Printer className="w-4 h-4" />
+                        Print
                       </Button>
-                    )}
-                  </div>
+                      {!note.has_invoice && (
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            setSelectedDeliveryNote(note);
+                            setShowInvoiceModal(true);
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Invoice
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </Card>
             ))
@@ -486,52 +625,68 @@ export default function DeliveryNotesAndInvoices() {
             filteredInvoices.map((invoice) => (
               <Card key={invoice.id}>
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="font-semibold text-lg text-gray-900">{invoice.invoice_number}</p>
-                    <p className="text-gray-600">{invoice.client?.name || 'N/A'}</p>
-                    <p className="text-sm text-gray-500">Delivery Note: {invoice.delivery_note_number}</p>
-                    <p className="text-sm text-gray-500">
-                      Liters: {invoice.liters_sold.toFixed(2)}L @ N${invoice.selling_price_per_liter.toFixed(2)}/L
-                    </p>
-                    <p className="text-lg font-semibold text-gray-900 mt-2">
-                      Total: N${invoice.total_amount.toFixed(2)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Status: <span className="font-medium capitalize">{invoice.status}</span>
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Date: {format(new Date(invoice.invoice_date || invoice.created_at), 'dd/MM/yyyy')}
-                    </p>
+                  <div className="flex items-start gap-3 flex-1">
+                    {selectMode && (
+                      <button
+                        onClick={() => toggleSelection(invoice.id)}
+                        className="mt-1 shrink-0"
+                      >
+                        {selectedIds.has(invoice.id) ? (
+                          <CheckSquare className="w-5 h-5 text-blue-600" strokeWidth={1.5} />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+                        )}
+                      </button>
+                    )}
+                    <div className="flex-1">
+                      <p className="font-semibold text-lg text-gray-900">{invoice.invoice_number}</p>
+                      <p className="text-gray-600">{invoice.client?.name || 'N/A'}</p>
+                      <p className="text-sm text-gray-500">Delivery Note: {invoice.delivery_note_number}</p>
+                      <p className="text-sm text-gray-500">
+                        Liters: {invoice.liters_sold.toFixed(2)}L @ N${invoice.selling_price_per_liter.toFixed(2)}/L
+                      </p>
+                      <p className="text-lg font-semibold text-gray-900 mt-2">
+                        Total: N${invoice.total_amount.toFixed(2)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Status: <span className="font-medium capitalize">{invoice.status}</span>
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Date: {format(new Date(invoice.invoice_date || invoice.created_at), 'dd/MM/yyyy')}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        setSelectedInvoice(invoice);
-                        setShowViewModal(true);
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <Eye className="w-4 h-4" />
-                      View
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => handlePrintInvoice(invoice)}
-                      className="flex items-center gap-2"
-                    >
-                      <Printer className="w-4 h-4" />
-                      Print
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={() => handleDownloadInvoice(invoice)}
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download
-                    </Button>
-                  </div>
+                  {!selectMode && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          setShowViewModal(true);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => handlePrintInvoice(invoice)}
+                        className="flex items-center gap-2"
+                      >
+                        <Printer className="w-4 h-4" />
+                        Print
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={() => handleDownloadInvoice(invoice)}
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </Card>
             ))
@@ -541,7 +696,7 @@ export default function DeliveryNotesAndInvoices() {
 
       {/* Create Invoice Modal */}
       {showInvoiceModal && selectedDeliveryNote && (
-        <Modal onClose={() => setShowInvoiceModal(false)} title="Create Invoice">
+        <Modal isOpen onClose={() => setShowInvoiceModal(false)} title="Create Invoice">
           <div className="relative">
             {submitting && <OshaliLoader variant="overlay" message="Creating invoice..." />}
           <div className="space-y-4">
@@ -614,7 +769,7 @@ export default function DeliveryNotesAndInvoices() {
 
       {/* View Invoice Modal */}
       {showViewModal && selectedInvoice && (
-        <Modal onClose={() => setShowViewModal(false)} title="Invoice Details">
+        <Modal isOpen onClose={() => setShowViewModal(false)} title="Invoice Details">
           <div className="space-y-4">
             <div>
               <p className="text-sm text-gray-600">Invoice Number</p>
@@ -672,6 +827,63 @@ export default function DeliveryNotesAndInvoices() {
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showBulkDeleteModal && (
+        <Modal isOpen onClose={() => setShowBulkDeleteModal(false)} title="Confirm Bulk Delete">
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm font-medium text-red-800">
+                You are about to delete {selectedIds.size} {activeTab === 'delivery_notes' ? 'delivery note' : 'invoice'}{selectedIds.size > 1 ? 's' : ''}. This action cannot be undone.
+              </p>
+              {activeTab === 'invoices' && (
+                <p className="text-xs text-red-600 mt-2">
+                  Deleting invoices will restore sold fuel back to inventory and update tank levels.
+                </p>
+              )}
+            </div>
+
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {Array.from(selectedIds).map((id) => {
+                if (activeTab === 'delivery_notes') {
+                  const note = deliveryNotes.find((n) => n.id === id);
+                  return note ? (
+                    <div key={id} className="flex items-center justify-between text-sm py-1.5 px-2 bg-gray-50 rounded">
+                      <span className="font-light">{note.note_number}</span>
+                      <span className="text-gray-500 font-light">{note.customer_name}</span>
+                    </div>
+                  ) : null;
+                } else {
+                  const inv = invoices.find((i) => i.id === id);
+                  return inv ? (
+                    <div key={id} className="flex items-center justify-between text-sm py-1.5 px-2 bg-gray-50 rounded">
+                      <span className="font-light">{inv.invoice_number}</span>
+                      <span className="text-gray-500 font-light">{formatCurrency(inv.total_amount)}</span>
+                    </div>
+                  ) : null;
+                }
+              })}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+                className="flex-1 !bg-red-600 hover:!bg-red-700 !text-white"
+              >
+                {bulkDeleting ? 'Deleting...' : `Delete ${selectedIds.size} Item${selectedIds.size > 1 ? 's' : ''}`}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowBulkDeleteModal(false)}
+                disabled={bulkDeleting}
+              >
+                Cancel
               </Button>
             </div>
           </div>
