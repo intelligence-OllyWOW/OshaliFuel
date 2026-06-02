@@ -526,7 +526,12 @@ export default function Settings() {
       }
     } catch (error) {
       console.error('Error deleting document:', error);
-      setDeleteMessage(`Error deleting document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const message =
+        (error as { message?: string })?.message ||
+        (error as { error_description?: string })?.error_description ||
+        (typeof error === 'string' ? error : '') ||
+        (error ? JSON.stringify(error) : 'Unknown error');
+      setDeleteMessage(`Error deleting document: ${message}`);
     } finally {
       setDeleting(false);
     }
