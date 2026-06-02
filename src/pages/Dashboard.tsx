@@ -521,9 +521,11 @@ export default function Dashboard() {
                               po.status === 'paid' ? 'bg-green-100 text-green-700' :
                               po.status === 'sent_to_supplier' ? 'bg-blue-100 text-blue-700' :
                               po.status === 'goods_received' ? 'bg-emerald-100 text-emerald-700' :
+                              po.status === 'voided' ? 'bg-red-100 text-red-700' :
+                              po.status === 'amended' ? 'bg-amber-100 text-amber-700' :
                               'bg-gray-100 text-gray-700'
                             }`}>
-                              {po.status === 'sent_to_supplier' ? 'Sent' : po.status === 'goods_received' ? 'Received' : po.status}
+                              {po.status === 'sent_to_supplier' ? 'Sent' : po.status === 'goods_received' ? 'Received' : po.status.replace(/_/g, ' ')}
                             </span>
                           </div>
                           <div className="text-xs font-light text-gray-500 mt-1">

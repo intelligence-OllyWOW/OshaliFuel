@@ -8,7 +8,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { Plus, Eye, Download, CheckCircle, Upload, FileText as FileIcon, Package, Trash2, Split } from 'lucide-react';
+import { Plus, Eye, Download, CheckCircle, Upload, FileText as FileIcon, Package, Trash2, Split, MoreVertical, XCircle, CreditCard as Edit3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency, generatePONumber } from '../lib/utils';
 import { format } from 'date-fns';
@@ -53,12 +53,24 @@ export default function Procurement() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [useNewSupplier, setUseNewSupplier] = useState(false);
+  const [showVoidModal, setShowVoidModal] = useState(false);
+  const [showAmendModal, setShowAmendModal] = useState(false);
+  const [voidReason, setVoidReason] = useState('');
+  const [poActionMenu, setPoActionMenu] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
     loadTanks();
     loadSuppliers();
   }, [activeTab]);
+
+  useEffect(() => {
+    function handleClickOutside() { setPoActionMenu(null); }
+    if (poActionMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [poActionMenu]);
 
   async function loadTanks() {
     try {
@@ -499,6 +511,81 @@ export default function Procurement() {
     return selectedGR.liters_received - totalAllocated;
   }
 
+  async function handleVoidPO() {
+    if (!selectedPO || !profile || !voidReason.trim()) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update({
+          status: 'voided' as any,
+          void_reason: voidReason.trim(),
+          voided_at: new Date().toISOString(),
+          voided_by: profile.id,
+        })
+        .eq('id', selectedPO.id);
+
+      if (!error) {
+        setShowVoidModal(false);
+        setSelectedPO(null);
+        setVoidReason('');
+        loadData();
+      }
+    } catch (error) {
+      console.error('Error voiding PO:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleAmendPO(formData: FormData) {
+    if (!selectedPO || !profile) return;
+    setSubmitting(true);
+    try {
+      let supplierId = selectedSupplierId || selectedPO.supplier_id;
+      const supplierName = formData.get('supplier') as string;
+      const supplierContact = formData.get('contact') as string;
+
+      const { data: poNumberData, error: poNumberError } = await supabase.rpc('generate_po_number');
+      if (poNumberError) throw poNumberError;
+      const poNumber = poNumberData as string;
+
+      const newPO = {
+        po_number: poNumber,
+        pr_id: selectedPO.pr_id,
+        liters_ordered: parseFloat(formData.get('liters') as string),
+        price_per_liter: parseFloat(formData.get('price') as string),
+        supplier_id: supplierId || null,
+        supplier_name: supplierName || selectedPO.supplier_name,
+        supplier_contact: supplierContact || selectedPO.supplier_contact,
+        status: 'sent_to_supplier' as const,
+        created_by: profile.id,
+        is_test_data: isTestingMode,
+        amended_from_id: selectedPO.id,
+        is_amendment: true,
+      };
+
+      const [createResult, updateResult] = await Promise.all([
+        supabase.from('purchase_orders').insert([newPO]),
+        supabase
+          .from('purchase_orders')
+          .update({ status: 'amended' as any })
+          .eq('id', selectedPO.id),
+      ]);
+
+      if (!createResult.error && !updateResult.error) {
+        setShowAmendModal(false);
+        setSelectedPO(null);
+        setSelectedSupplierId('');
+        loadData();
+      }
+    } catch (error) {
+      console.error('Error amending PO:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   const canCreate = profile?.role === 'operations_supervisor' || profile?.role === 'super_admin' || profile?.role === 'administrator';
   const canEdit = profile?.role === 'finance' || profile?.role === 'super_admin' || profile?.role === 'general_manager';
 
@@ -600,10 +687,17 @@ export default function Procurement() {
                       po.status === 'draft' ? 'bg-gray-100 text-gray-700' :
                       po.status === 'sent_to_supplier' ? 'bg-blue-100 text-blue-700' :
                       po.status === 'paid' ? 'bg-green-100 text-green-700' :
+                      (po.status as string) === 'voided' ? 'bg-red-100 text-red-700' :
+                      (po.status as string) === 'amended' ? 'bg-amber-100 text-amber-700' :
                       'bg-purple-100 text-purple-700'
                     }`}>
-                      {po.status.replace('_', ' ')}
+                      {(po.status as string).replace(/_/g, ' ')}
                     </span>
+                    {(po as any).is_amendment && (
+                      <span className="text-xs font-light px-2 py-1 rounded-full bg-blue-50 text-blue-600">
+                        Amendment
+                      </span>
+                    )}
                     {po.proof_of_payment_url && (
                       <span className="flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-1 rounded-full">
                         <CheckCircle className="w-3 h-3" strokeWidth={1} />
@@ -629,6 +723,11 @@ export default function Procurement() {
                       <div>{formatCurrency(po.total_amount)}</div>
                     </div>
                   </div>
+                  {(po as any).void_reason && (
+                    <div className="text-xs font-light text-red-600 bg-red-50 rounded px-2 py-1 mb-2">
+                      Void reason: {(po as any).void_reason}
+                    </div>
+                  )}
                   {po.proof_of_payment_url && (
                     <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                       <FileIcon className="w-4 h-4 text-gray-400" strokeWidth={1} />
@@ -648,7 +747,7 @@ export default function Procurement() {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex gap-2 items-start" onClick={(e) => e.stopPropagation()}>
                   <Button size="sm" variant="secondary">
                     <Download className="w-4 h-4" strokeWidth={1} />
                   </Button>
@@ -656,6 +755,43 @@ export default function Procurement() {
                     <Button size="sm" onClick={() => { setSelectedPO(po); setShowGRModal(true); }}>
                       Create GR
                     </Button>
+                  )}
+                  {canEdit && (po.status as string) !== 'voided' && (po.status as string) !== 'amended' && (po.status as string) !== 'goods_received' && (
+                    <div className="relative">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setPoActionMenu(poActionMenu === po.id ? null : po.id)}
+                      >
+                        <MoreVertical className="w-4 h-4" strokeWidth={1.5} />
+                      </Button>
+                      {poActionMenu === po.id && (
+                        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[140px]">
+                          <button
+                            onClick={() => {
+                              setSelectedPO(po);
+                              setShowAmendModal(true);
+                              setPoActionMenu(null);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm font-light hover:bg-gray-50 flex items-center gap-2 rounded-t-lg"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-gray-500" strokeWidth={1.5} />
+                            Amend
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedPO(po);
+                              setShowVoidModal(true);
+                              setPoActionMenu(null);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm font-light text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-b-lg"
+                          >
+                            <XCircle className="w-3.5 h-3.5" strokeWidth={1.5} />
+                            Void
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -854,12 +990,31 @@ export default function Procurement() {
                   selectedPO.status === 'draft' ? 'bg-gray-100 text-gray-700' :
                   selectedPO.status === 'sent_to_supplier' ? 'bg-blue-100 text-blue-700' :
                   selectedPO.status === 'paid' ? 'bg-green-100 text-green-700' :
+                  (selectedPO.status as string) === 'voided' ? 'bg-red-100 text-red-700' :
+                  (selectedPO.status as string) === 'amended' ? 'bg-amber-100 text-amber-700' :
                   'bg-purple-100 text-purple-700'
                 }`}>
-                  {selectedPO.status.replace('_', ' ')}
+                  {(selectedPO.status as string).replace(/_/g, ' ')}
                 </span>
+                {(selectedPO as any).is_amendment && (
+                  <span className="ml-2 text-xs font-light px-2 py-1 rounded-full bg-blue-50 text-blue-600">
+                    Amendment
+                  </span>
+                )}
               </div>
             </div>
+
+            {(selectedPO as any).void_reason && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="text-xs text-red-500 mb-1">Void Reason</div>
+                <div className="text-sm font-light text-red-800">{(selectedPO as any).void_reason}</div>
+                {(selectedPO as any).voided_at && (
+                  <div className="text-xs text-red-400 mt-1">
+                    Voided: {format(new Date((selectedPO as any).voided_at), 'MMM dd, yyyy HH:mm')}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -925,15 +1080,32 @@ export default function Procurement() {
             <div className="flex gap-2 pt-4 border-t border-gray-100">
               {canEdit && (selectedPO.status === 'sent_to_supplier' || selectedPO.status === 'paid') && (
                 <Button
-                  className="flex-1"
                   onClick={() => { setShowViewPOModal(false); setShowGRModal(true); }}
                 >
-                  Create Goods Received
+                  Create GR
                 </Button>
+              )}
+              {canEdit && (selectedPO.status as string) !== 'voided' && (selectedPO.status as string) !== 'amended' && (selectedPO.status as string) !== 'goods_received' && (
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() => { setShowViewPOModal(false); setShowAmendModal(true); }}
+                  >
+                    <Edit3 className="w-3.5 h-3.5 mr-1.5" strokeWidth={1.5} />
+                    Amend
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="!text-red-600 !border-red-200 hover:!bg-red-50"
+                    onClick={() => { setShowViewPOModal(false); setShowVoidModal(true); }}
+                  >
+                    <XCircle className="w-3.5 h-3.5 mr-1.5" strokeWidth={1.5} />
+                    Void
+                  </Button>
+                </>
               )}
               <Button
                 variant="secondary"
-                className="flex-1"
                 onClick={() => { setShowViewPOModal(false); setSelectedPO(null); }}
               >
                 Close
@@ -1267,6 +1439,141 @@ export default function Procurement() {
             </div>
           </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Void PO Modal */}
+      <Modal
+        isOpen={showVoidModal}
+        onClose={() => { setShowVoidModal(false); setVoidReason(''); }}
+        title="Void Purchase Order"
+      >
+        {selectedPO && (
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm font-light text-red-800">
+                You are about to void <span className="font-medium">{selectedPO.po_number}</span>. This action cannot be undone. The purchase order will be marked as voided and will no longer be actionable.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm font-light">
+              <div>
+                <span className="text-gray-500">Supplier:</span>
+                <span className="ml-2">{selectedPO.supplier_name}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Amount:</span>
+                <span className="ml-2">{formatCurrency(selectedPO.total_amount)}</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-light text-gray-700 mb-1">Reason for voiding *</label>
+              <textarea
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="Explain why this purchase order is being voided..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-light focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleVoidPO}
+                disabled={submitting || !voidReason.trim()}
+                className="flex-1 !bg-red-600 hover:!bg-red-700 !text-white"
+              >
+                {submitting ? 'Voiding...' : 'Confirm Void'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => { setShowVoidModal(false); setVoidReason(''); }}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Amend PO Modal */}
+      <Modal
+        isOpen={showAmendModal}
+        onClose={() => { setShowAmendModal(false); setSelectedSupplierId(''); }}
+        title="Amend Purchase Order"
+      >
+        {selectedPO && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAmendPO(new FormData(e.currentTarget));
+            }}
+            className="space-y-4"
+          >
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm font-light text-blue-800">
+                This will create a new amended purchase order and mark <span className="font-medium">{selectedPO.po_number}</span> as superseded. Edit the fields you want to change.
+              </p>
+            </div>
+
+            <Select
+              label="Supplier"
+              value={selectedSupplierId || selectedPO.supplier_id || ''}
+              onChange={(e) => setSelectedSupplierId(e.target.value)}
+            >
+              <option value="">Keep current supplier</option>
+              {suppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </option>
+              ))}
+            </Select>
+
+            <Input
+              name="supplier"
+              label="Supplier Name"
+              defaultValue={selectedPO.supplier_name}
+              required
+            />
+            <Input
+              name="contact"
+              label="Supplier Contact"
+              defaultValue={selectedPO.supplier_contact || ''}
+            />
+            <Input
+              name="liters"
+              label="Liters to Order"
+              type="number"
+              step="0.01"
+              defaultValue={selectedPO.liters_ordered}
+              required
+            />
+            <Input
+              name="price"
+              label="Price per Liter"
+              type="number"
+              step="0.01"
+              defaultValue={selectedPO.price_per_liter}
+              required
+            />
+
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="flex-1"
+              >
+                {submitting ? 'Creating Amendment...' : 'Create Amendment'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => { setShowAmendModal(false); setSelectedSupplierId(''); }}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
         )}
       </Modal>
     </div>
