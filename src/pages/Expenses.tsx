@@ -133,8 +133,11 @@ export default function Expenses() {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
@@ -333,6 +336,59 @@ export default function Expenses() {
     loadData();
   }
 
+  // ── Delete expense ────────────────────────────────────────────────────────
+
+  async function handleDelete() {
+    if (!selectedExpense || !profile) return;
+    setDeleting(true);
+
+    try {
+      const { error: auditError } = await supabase
+        .from('expense_audit_log')
+        .insert([{
+          expense_id: selectedExpense.id,
+          expense_number: selectedExpense.expense_number,
+          title: selectedExpense.title,
+          amount: selectedExpense.amount,
+          action: 'deleted',
+          performed_by: profile.id,
+          reason: deleteReason.trim() || null,
+          metadata: {
+            description: selectedExpense.description,
+            category_id: selectedExpense.category_id,
+            category_name: selectedExpense.category?.name,
+            expense_date: selectedExpense.expense_date,
+            status: selectedExpense.status,
+            submitted_by: selectedExpense.submitted_by,
+            submitter_name: selectedExpense.submitter?.full_name,
+            receipt_url: selectedExpense.receipt_url,
+            notes: selectedExpense.notes,
+            created_at: selectedExpense.created_at,
+          },
+        }]);
+
+      if (auditError) {
+        console.error('Audit log error:', auditError);
+      }
+
+      const { error: deleteError } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', selectedExpense.id);
+
+      if (deleteError) throw deleteError;
+
+      setShowDeleteModal(false);
+      setSelectedExpense(null);
+      setDeleteReason('');
+      loadData();
+    } catch (err) {
+      console.error('Error deleting expense:', err);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   // ── Filtered expenses ──────────────────────────────────────────────────────
 
   const filtered = expenses.filter((e) => {
@@ -521,6 +577,17 @@ export default function Expenses() {
                       </button>
                     </div>
                   )}
+
+                  {/* Finance/Super Admin: delete */}
+                  {(isFinance || isSuperAdmin) && (
+                    <button
+                      onClick={() => { setSelectedExpense(expense); setShowDeleteModal(true); }}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+                      title="Delete expense"
+                    >
+                      <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                    </button>
+                  )}
                 </div>
               </div>
             </Card>
@@ -684,6 +751,65 @@ export default function Expenses() {
               <Button
                 variant="secondary"
                 onClick={() => { setShowRejectModal(false); setSelectedExpense(null); setRejectionReason(''); }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Delete Confirmation Modal ───────────────────────────────────── */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => { setShowDeleteModal(false); setSelectedExpense(null); setDeleteReason(''); }}
+        title="Delete Expense"
+      >
+        {selectedExpense && (
+          <div className="space-y-4">
+            <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+              <p className="text-sm font-medium text-red-800 mb-2">
+                This action cannot be undone.
+              </p>
+              <p className="text-sm font-light text-red-700">
+                The expense record will be permanently removed. An audit log entry will be created for accountability.
+              </p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between">
+                <p className="font-light">{selectedExpense.title}</p>
+                <StatusBadge status={selectedExpense.status} />
+              </div>
+              <p className="text-xs font-light text-gray-400 mt-1">{selectedExpense.expense_number}</p>
+              <p className="text-sm font-light text-gray-500 mt-1">
+                {selectedExpense.submitter?.full_name} · {format(new Date(selectedExpense.expense_date), 'd MMM yyyy')}
+              </p>
+              <p className="text-xl font-light mt-2">{formatCurrency(selectedExpense.amount)}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-light text-gray-700 mb-1">
+                Reason for deletion (optional)
+              </label>
+              <textarea
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="e.g. Duplicate entry, entered in error..."
+                rows={2}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-light focus:outline-none focus:ring-1 focus:ring-gray-300 resize-none"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40"
+              >
+                <Trash2 className="w-4 h-4 mr-2" strokeWidth={1.5} />
+                {deleting ? 'Deleting...' : 'Delete Expense'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => { setShowDeleteModal(false); setSelectedExpense(null); setDeleteReason(''); }}
               >
                 Cancel
               </Button>
