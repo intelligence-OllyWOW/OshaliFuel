@@ -7,7 +7,7 @@ import Button from './ui/Button';
 import Modal from './ui/Modal';
 import Input from './ui/Input';
 import Select from './ui/Select';
-import { FileText, Printer, Download, Plus, Eye, Search, ChevronDown, Trash2, CheckSquare, Square, XCircle } from 'lucide-react';
+import { FileText, Printer, Download, Plus, Eye, Search, ChevronDown, Trash2, CheckSquare, Square } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
@@ -68,7 +68,7 @@ interface Client {
 export default function DeliveryNotesAndInvoices() {
   const { profile } = useAuth();
   const { isTestingMode } = useTestingMode();
-  const [activeTab, setActiveTab] = useState<'delivery_notes' | 'invoices'>('delivery_notes');
+  const [activeTab, setActiveTab] = useState<'delivery_notes' | 'invoices' | 'bulk_delete'>('delivery_notes');
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [tanks, setTanks] = useState<Tank[]>([]);
@@ -84,10 +84,10 @@ export default function DeliveryNotesAndInvoices() {
   const [submitting, setSubmitting] = useState(false);
   const [effectivePrice, setEffectivePrice] = useState<number>(0);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [deleteDocType, setDeleteDocType] = useState<'delivery_notes' | 'invoices'>('delivery_notes');
 
   useEffect(() => {
     loadData();
@@ -381,7 +381,7 @@ export default function DeliveryNotesAndInvoices() {
   }
 
   function toggleSelectAll() {
-    const currentItems = activeTab === 'delivery_notes' ? filteredDeliveryNotes : filteredInvoices;
+    const currentItems = deleteDocType === 'delivery_notes' ? filteredDeliveryNotes : filteredInvoices;
     const allIds = currentItems.map((item) => item.id);
     const allSelected = allIds.every((id) => selectedIds.has(id));
     if (allSelected) {
@@ -392,7 +392,6 @@ export default function DeliveryNotesAndInvoices() {
   }
 
   function exitSelectMode() {
-    setSelectMode(false);
     setSelectedIds(new Set());
   }
 
@@ -407,8 +406,8 @@ export default function DeliveryNotesAndInvoices() {
       let errorCount = 0;
 
       for (const id of ids) {
-        const rpcName = activeTab === 'delivery_notes' ? 'delete_delivery_note' : 'delete_invoice';
-        const paramName = activeTab === 'delivery_notes' ? 'p_dn_id' : 'p_invoice_id';
+        const rpcName = deleteDocType === 'delivery_notes' ? 'delete_delivery_note' : 'delete_invoice';
+        const paramName = deleteDocType === 'delivery_notes' ? 'p_dn_id' : 'p_invoice_id';
         const { error } = await supabase.rpc(rpcName, { [paramName]: id });
         if (error) {
           console.error(`Failed to delete ${id}:`, error);
@@ -419,7 +418,7 @@ export default function DeliveryNotesAndInvoices() {
       }
 
       if (errorCount === 0) {
-        setFeedback({ type: 'success', message: `Successfully deleted ${successCount} ${activeTab === 'delivery_notes' ? 'delivery note' : 'invoice'}${successCount > 1 ? 's' : ''}` });
+        setFeedback({ type: 'success', message: `Successfully deleted ${successCount} ${deleteDocType === 'delivery_notes' ? 'delivery note' : 'invoice'}${successCount > 1 ? 's' : ''}` });
       } else {
         setFeedback({ type: 'error', message: `Deleted ${successCount}, failed ${errorCount}` });
       }
@@ -474,11 +473,22 @@ export default function DeliveryNotesAndInvoices() {
           <FileText className="w-4 h-4 mr-2 inline-block" />
           Invoices ({invoices.length})
         </button>
+        <button
+          onClick={() => { setActiveTab('bulk_delete'); setSelectedIds(new Set()); }}
+          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+            activeTab === 'bulk_delete'
+              ? 'border-red-600 text-red-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Trash2 className="w-4 h-4 mr-2 inline-block" />
+          Bulk Delete
+        </button>
       </div>
 
-      {/* Search & Select Mode */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
+      {/* Search (for Delivery Notes and Invoices tabs only) */}
+      {activeTab !== 'bulk_delete' && (
+        <div className="relative">
           <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
           <input
             type="text"
@@ -487,60 +497,6 @@ export default function DeliveryNotesAndInvoices() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-        </div>
-        {!selectMode ? (
-          <Button
-            variant="secondary"
-            onClick={() => setSelectMode(true)}
-            className="flex items-center gap-2 whitespace-nowrap"
-          >
-            <CheckSquare className="w-4 h-4" strokeWidth={1.5} />
-            Select
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            onClick={exitSelectMode}
-            className="flex items-center gap-2 whitespace-nowrap"
-          >
-            <XCircle className="w-4 h-4" strokeWidth={1.5} />
-            Cancel
-          </Button>
-        )}
-      </div>
-
-      {/* Bulk Action Bar */}
-      {selectMode && (
-        <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleSelectAll}
-              className="flex items-center gap-2 text-sm font-light text-gray-700 hover:text-gray-900"
-            >
-              {(() => {
-                const currentItems = activeTab === 'delivery_notes' ? filteredDeliveryNotes : filteredInvoices;
-                const allSelected = currentItems.length > 0 && currentItems.every((item) => selectedIds.has(item.id));
-                return allSelected ? (
-                  <CheckSquare className="w-4 h-4 text-blue-600" strokeWidth={1.5} />
-                ) : (
-                  <Square className="w-4 h-4" strokeWidth={1.5} />
-                );
-              })()}
-              Select All
-            </button>
-            <span className="text-sm font-light text-gray-500">
-              {selectedIds.size} selected
-            </span>
-          </div>
-          <Button
-            variant="secondary"
-            onClick={() => setShowBulkDeleteModal(true)}
-            disabled={selectedIds.size === 0}
-            className="flex items-center gap-2 !text-red-600 !border-red-200 hover:!bg-red-50 disabled:!text-gray-400 disabled:!border-gray-200"
-          >
-            <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-            Delete ({selectedIds.size})
-          </Button>
         </div>
       )}
 
@@ -555,58 +511,42 @@ export default function DeliveryNotesAndInvoices() {
             filteredDeliveryNotes.map((note) => (
               <Card key={note.id}>
                 <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1">
-                    {selectMode && (
-                      <button
-                        onClick={() => toggleSelection(note.id)}
-                        className="mt-1 shrink-0"
-                      >
-                        {selectedIds.has(note.id) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-600" strokeWidth={1.5} />
-                        ) : (
-                          <Square className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
-                        )}
-                      </button>
+                  <div className="flex-1">
+                    <p className="font-semibold text-lg text-gray-900">{note.note_number}</p>
+                    <p className="text-gray-600">{note.customer_name}</p>
+                    <p className="text-sm text-gray-500">Vehicle: {note.vehicle_registration}</p>
+                    <p className="text-sm text-gray-500">Driver: {note.driver_name}</p>
+                    <p className="text-sm text-gray-500">Liters Dispensed: {note.litres_dispensed.toFixed(2)}L</p>
+                    <p className="text-sm text-gray-500">
+                      Created: {format(new Date(note.created_at), 'dd/MM/yyyy HH:mm')}
+                    </p>
+                    {note.has_invoice && (
+                      <p className="text-sm text-green-600 font-medium mt-2">Invoice Created</p>
                     )}
-                    <div className="flex-1">
-                      <p className="font-semibold text-lg text-gray-900">{note.note_number}</p>
-                      <p className="text-gray-600">{note.customer_name}</p>
-                      <p className="text-sm text-gray-500">Vehicle: {note.vehicle_registration}</p>
-                      <p className="text-sm text-gray-500">Driver: {note.driver_name}</p>
-                      <p className="text-sm text-gray-500">Liters Dispensed: {note.litres_dispensed.toFixed(2)}L</p>
-                      <p className="text-sm text-gray-500">
-                        Created: {format(new Date(note.created_at), 'dd/MM/yyyy HH:mm')}
-                      </p>
-                      {note.has_invoice && (
-                        <p className="text-sm text-green-600 font-medium mt-2">Invoice Created</p>
-                      )}
-                    </div>
                   </div>
-                  {!selectMode && (
-                    <div className="flex gap-2">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => handlePrintDeliveryNote(note)}
+                      className="flex items-center gap-2"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Print
+                    </Button>
+                    {!note.has_invoice && (
                       <Button
-                        variant="secondary"
-                        onClick={() => handlePrintDeliveryNote(note)}
+                        variant="primary"
+                        onClick={() => {
+                          setSelectedDeliveryNote(note);
+                          setShowInvoiceModal(true);
+                        }}
                         className="flex items-center gap-2"
                       >
-                        <Printer className="w-4 h-4" />
-                        Print
+                        <Plus className="w-4 h-4" />
+                        Invoice
                       </Button>
-                      {!note.has_invoice && (
-                        <Button
-                          variant="primary"
-                          onClick={() => {
-                            setSelectedDeliveryNote(note);
-                            setShowInvoiceModal(true);
-                          }}
-                          className="flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Invoice
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </Card>
             ))
@@ -625,71 +565,226 @@ export default function DeliveryNotesAndInvoices() {
             filteredInvoices.map((invoice) => (
               <Card key={invoice.id}>
                 <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1">
-                    {selectMode && (
-                      <button
-                        onClick={() => toggleSelection(invoice.id)}
-                        className="mt-1 shrink-0"
-                      >
-                        {selectedIds.has(invoice.id) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-600" strokeWidth={1.5} />
-                        ) : (
-                          <Square className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
-                        )}
-                      </button>
-                    )}
-                    <div className="flex-1">
-                      <p className="font-semibold text-lg text-gray-900">{invoice.invoice_number}</p>
-                      <p className="text-gray-600">{invoice.client?.name || 'N/A'}</p>
-                      <p className="text-sm text-gray-500">Delivery Note: {invoice.delivery_note_number}</p>
-                      <p className="text-sm text-gray-500">
-                        Liters: {invoice.liters_sold.toFixed(2)}L @ N${invoice.selling_price_per_liter.toFixed(2)}/L
-                      </p>
-                      <p className="text-lg font-semibold text-gray-900 mt-2">
-                        Total: N${invoice.total_amount.toFixed(2)}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Status: <span className="font-medium capitalize">{invoice.status}</span>
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Date: {format(new Date(invoice.invoice_date || invoice.created_at), 'dd/MM/yyyy')}
-                      </p>
-                    </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-lg text-gray-900">{invoice.invoice_number}</p>
+                    <p className="text-gray-600">{invoice.client?.name || 'N/A'}</p>
+                    <p className="text-sm text-gray-500">Delivery Note: {invoice.delivery_note_number}</p>
+                    <p className="text-sm text-gray-500">
+                      Liters: {invoice.liters_sold.toFixed(2)}L @ N${invoice.selling_price_per_liter.toFixed(2)}/L
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900 mt-2">
+                      Total: N${invoice.total_amount.toFixed(2)}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Status: <span className="font-medium capitalize">{invoice.status}</span>
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Date: {format(new Date(invoice.invoice_date || invoice.created_at), 'dd/MM/yyyy')}
+                    </p>
                   </div>
-                  {!selectMode && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          setSelectedInvoice(invoice);
-                          setShowViewModal(true);
-                        }}
-                        className="flex items-center gap-2"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => handlePrintInvoice(invoice)}
-                        className="flex items-center gap-2"
-                      >
-                        <Printer className="w-4 h-4" />
-                        Print
-                      </Button>
-                      <Button
-                        variant="primary"
-                        onClick={() => handleDownloadInvoice(invoice)}
-                        className="flex items-center gap-2"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setSelectedInvoice(invoice);
+                        setShowViewModal(true);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      View
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handlePrintInvoice(invoice)}
+                      className="flex items-center gap-2"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Print
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={() => handleDownloadInvoice(invoice)}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download
+                    </Button>
+                  </div>
                 </div>
               </Card>
             ))
+          )}
+        </div>
+      )}
+
+      {/* Bulk Delete Tab */}
+      {activeTab === 'bulk_delete' && (
+        <div className="space-y-4">
+          {/* Doc type sub-filter */}
+          <div className="flex items-center gap-3">
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => { setDeleteDocType('delivery_notes'); setSelectedIds(new Set()); }}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  deleteDocType === 'delivery_notes'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Delivery Notes ({deliveryNotes.length})
+              </button>
+              <button
+                onClick={() => { setDeleteDocType('invoices'); setSelectedIds(new Set()); }}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  deleteDocType === 'invoices'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Invoices ({invoices.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Search within bulk delete */}
+          <div className="relative">
+            <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
+            <input
+              type="text"
+              placeholder={`Search ${deleteDocType === 'delivery_notes' ? 'delivery notes' : 'invoices'}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Selection toolbar */}
+          <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleSelectAll}
+                className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+              >
+                {(() => {
+                  const currentItems = deleteDocType === 'delivery_notes' ? filteredDeliveryNotes : filteredInvoices;
+                  const allSelected = currentItems.length > 0 && currentItems.every((item) => selectedIds.has(item.id));
+                  return allSelected ? (
+                    <CheckSquare className="w-5 h-5 text-blue-600" />
+                  ) : (
+                    <Square className="w-5 h-5 text-gray-400" />
+                  );
+                })()}
+                Select All
+              </button>
+              <span className="text-sm text-gray-500">
+                {selectedIds.size} of {(deleteDocType === 'delivery_notes' ? filteredDeliveryNotes : filteredInvoices).length} selected
+              </span>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => setShowBulkDeleteModal(true)}
+              disabled={selectedIds.size === 0}
+              className="flex items-center gap-2 !text-red-600 !border-red-300 hover:!bg-red-50 disabled:!text-gray-400 disabled:!border-gray-200"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Selected ({selectedIds.size})
+            </Button>
+          </div>
+
+          {/* Document list with checkboxes */}
+          {deleteDocType === 'delivery_notes' ? (
+            <div className="space-y-2">
+              {filteredDeliveryNotes.length === 0 ? (
+                <Card>
+                  <p className="text-center text-gray-500 py-8">No delivery notes found</p>
+                </Card>
+              ) : (
+                filteredDeliveryNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    onClick={() => toggleSelection(note.id)}
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selectedIds.has(note.id)
+                        ? 'border-blue-300 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    {selectedIds.has(note.id) ? (
+                      <CheckSquare className="w-5 h-5 text-blue-600 shrink-0" />
+                    ) : (
+                      <Square className="w-5 h-5 text-gray-400 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-gray-900">{note.note_number}</p>
+                        {note.has_invoice && (
+                          <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
+                            Invoiced
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{note.customer_name} - {note.vehicle_registration}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-medium text-gray-900">{note.litres_dispensed.toFixed(1)}L</p>
+                      <p className="text-xs text-gray-500">{format(new Date(note.created_at), 'dd/MM/yyyy')}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredInvoices.length === 0 ? (
+                <Card>
+                  <p className="text-center text-gray-500 py-8">No invoices found</p>
+                </Card>
+              ) : (
+                filteredInvoices.map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    onClick={() => toggleSelection(invoice.id)}
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selectedIds.has(invoice.id)
+                        ? 'border-blue-300 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    {selectedIds.has(invoice.id) ? (
+                      <CheckSquare className="w-5 h-5 text-blue-600 shrink-0" />
+                    ) : (
+                      <Square className="w-5 h-5 text-gray-400 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-gray-900">{invoice.invoice_number}</p>
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                          invoice.status === 'settled'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {invoice.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 truncate">{invoice.client?.name || 'N/A'} - {invoice.delivery_note_number}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-medium text-gray-900">N${invoice.total_amount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-500">{format(new Date(invoice.invoice_date || invoice.created_at), 'dd/MM/yyyy')}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {deleteDocType === 'invoices' && selectedIds.size > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-xs text-amber-800">
+                Deleting invoices will restore sold fuel back to inventory and update tank levels accordingly.
+              </p>
+            </div>
           )}
         </div>
       )}
@@ -839,9 +934,9 @@ export default function DeliveryNotesAndInvoices() {
           <div className="space-y-4">
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <p className="text-sm font-medium text-red-800">
-                You are about to delete {selectedIds.size} {activeTab === 'delivery_notes' ? 'delivery note' : 'invoice'}{selectedIds.size > 1 ? 's' : ''}. This action cannot be undone.
+                You are about to delete {selectedIds.size} {deleteDocType === 'delivery_notes' ? 'delivery note' : 'invoice'}{selectedIds.size > 1 ? 's' : ''}. This action cannot be undone.
               </p>
-              {activeTab === 'invoices' && (
+              {deleteDocType === 'invoices' && (
                 <p className="text-xs text-red-600 mt-2">
                   Deleting invoices will restore sold fuel back to inventory and update tank levels.
                 </p>
@@ -850,20 +945,20 @@ export default function DeliveryNotesAndInvoices() {
 
             <div className="max-h-48 overflow-y-auto space-y-1">
               {Array.from(selectedIds).map((id) => {
-                if (activeTab === 'delivery_notes') {
+                if (deleteDocType === 'delivery_notes') {
                   const note = deliveryNotes.find((n) => n.id === id);
                   return note ? (
                     <div key={id} className="flex items-center justify-between text-sm py-1.5 px-2 bg-gray-50 rounded">
-                      <span className="font-light">{note.note_number}</span>
-                      <span className="text-gray-500 font-light">{note.customer_name}</span>
+                      <span className="font-medium">{note.note_number}</span>
+                      <span className="text-gray-500">{note.customer_name}</span>
                     </div>
                   ) : null;
                 } else {
                   const inv = invoices.find((i) => i.id === id);
                   return inv ? (
                     <div key={id} className="flex items-center justify-between text-sm py-1.5 px-2 bg-gray-50 rounded">
-                      <span className="font-light">{inv.invoice_number}</span>
-                      <span className="text-gray-500 font-light">{formatCurrency(inv.total_amount)}</span>
+                      <span className="font-medium">{inv.invoice_number}</span>
+                      <span className="text-gray-500">{formatCurrency(inv.total_amount)}</span>
                     </div>
                   ) : null;
                 }
