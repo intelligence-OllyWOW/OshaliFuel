@@ -513,46 +513,15 @@ export default function FinanceDashboard() {
             </Card>
           )}
 
-          {/* Zone 2 — Financial Summary */}
-          <Card>
-            <div className="space-y-4">
-              <h3 className="text-sm font-light text-gray-500">{periodLabel} Financial Summary</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl">
-                  <span className="text-xs font-light text-gray-600">Gross Sales Revenue</span>
-                  <span className="text-lg font-light text-emerald-600">{formatCurrency(stats.monthRevenue)}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl">
-                  <span className="text-xs font-light text-gray-600">Cost of Fuel Sold</span>
-                  <span className="text-lg font-light text-red-600">-{formatCurrency(stats.costOfFuelSold)}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
-                  <span className="text-xs font-light text-gray-600">Gross Profit</span>
-                  <span className="text-lg font-light text-blue-600">{formatCurrency(grossProfit)}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-xl">
-                  <span className="text-xs font-light text-gray-600">Operating Expenses</span>
-                  <span className="text-lg font-light text-orange-600">-{formatCurrency(stats.approvedExpenses)}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl border-2 border-blue-200">
-                  <span className="text-sm font-medium text-gray-700">Net Profit</span>
-                  <span className={`text-xl font-light ${netIncome >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                    {formatCurrency(netIncome)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Zone 3 — Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Zone 2 — Charts (moved to top for visibility) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium text-gray-700">Daily Revenue (Last 7 Days)</h3>
+              <div className="space-y-3">
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Daily Revenue (Last 7 Days)</h3>
                 {dailyRevenue.length > 0 ? (
                   <HorizontalBarList data={dailyRevenue} />
                 ) : (
-                  <div className="text-center py-8 text-sm font-light text-gray-400">
+                  <div className="text-center py-6 text-sm font-light text-gray-400">
                     No revenue data for this period
                   </div>
                 )}
@@ -561,47 +530,39 @@ export default function FinanceDashboard() {
             <RevenueTrendChart />
           </div>
 
-          {/* Zone 4 — Recent Purchase Orders */}
+          {/* Zone 3 — Financial Summary (compact) */}
           <Card>
-            <div className="space-y-4">
-              <h3 className="text-sm font-light text-gray-500">Recent Purchase Orders</h3>
-              {recentPOs.length === 0 ? (
-                <div className="text-center py-8 text-sm font-light text-gray-400">
-                  No purchase orders yet
+            <div className="space-y-3">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">{periodLabel} Financial Summary</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+                <div className="flex items-center justify-between px-3 py-2 bg-emerald-50 rounded-lg">
+                  <span className="text-xs font-light text-gray-600">Revenue</span>
+                  <span className="text-sm font-medium text-emerald-600">{formatCurrency(stats.monthRevenue)}</span>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {recentPOs.map((po) => (
-                    <div key={po.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-light">{po.po_number}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-light ${
-                            po.status === 'paid' ? 'bg-green-100 text-green-700' :
-                            po.status === 'sent_to_supplier' ? 'bg-blue-100 text-blue-700' :
-                            po.status === 'goods_received' ? 'bg-emerald-100 text-emerald-700' :
-                            'bg-gray-100 text-gray-700'
-                          }`}>
-                            {po.status === 'sent_to_supplier' ? 'Sent' : po.status === 'goods_received' ? 'Received' : po.status}
-                          </span>
-                        </div>
-                        <div className="text-xs font-light text-gray-500 mt-1">
-                          {po.supplier_name} • {formatNumber(po.liters_ordered)}L
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-light">{formatCurrency(po.total_amount)}</div>
-                        <div className="text-xs font-light text-gray-500">{format(new Date(po.created_at), 'MMM d')}</div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between px-3 py-2 bg-red-50 rounded-lg">
+                  <span className="text-xs font-light text-gray-600">COFS</span>
+                  <span className="text-sm font-medium text-red-600">-{formatCurrency(stats.costOfFuelSold)}</span>
                 </div>
-              )}
+                <div className="flex items-center justify-between px-3 py-2 bg-blue-50 rounded-lg">
+                  <span className="text-xs font-light text-gray-600">Gross Profit</span>
+                  <span className="text-sm font-medium text-blue-600">{formatCurrency(grossProfit)}</span>
+                </div>
+                <div className="flex items-center justify-between px-3 py-2 bg-orange-50 rounded-lg">
+                  <span className="text-xs font-light text-gray-600">Expenses</span>
+                  <span className="text-sm font-medium text-orange-600">-{formatCurrency(stats.approvedExpenses)}</span>
+                </div>
+                <div className="col-span-2 lg:col-span-1 flex items-center justify-between px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                  <span className="text-xs font-medium text-gray-700">Net Profit</span>
+                  <span className={`text-sm font-semibold ${netIncome >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    {formatCurrency(netIncome)}
+                  </span>
+                </div>
+              </div>
             </div>
           </Card>
 
-          {/* Stat cards — supporting context at bottom */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Zone 4 — Stat cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
             {statCards.map((stat) => (
               <Card key={stat.label}>
                 <button
@@ -614,7 +575,7 @@ export default function FinanceDashboard() {
                       <div className="text-2xl font-light">{stat.value}</div>
                       <div className="text-xs font-light text-gray-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Click for details</div>
                     </div>
-                    <div className={`${stat.color} ${stat.bg} w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform`}>
+                    <div className={`${stat.color} ${stat.bg} w-10 h-10 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform`}>
                       {stat.icon}
                     </div>
                   </div>
@@ -622,6 +583,41 @@ export default function FinanceDashboard() {
               </Card>
             ))}
           </div>
+
+          {/* Zone 5 — Recent Purchase Orders (compact) */}
+          <Card>
+            <div className="space-y-2">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Recent Purchase Orders</h3>
+              {recentPOs.length === 0 ? (
+                <div className="text-center py-4 text-sm font-light text-gray-400">
+                  No purchase orders yet
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {recentPOs.map((po) => (
+                    <div key={po.id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-sm font-light text-gray-800">{po.po_number}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          po.status === 'paid' ? 'bg-green-100 text-green-700' :
+                          po.status === 'sent_to_supplier' ? 'bg-blue-100 text-blue-700' :
+                          po.status === 'goods_received' ? 'bg-emerald-100 text-emerald-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {po.status === 'sent_to_supplier' ? 'Sent' : po.status === 'goods_received' ? 'Received' : po.status}
+                        </span>
+                        <span className="text-xs font-light text-gray-400 truncate">{po.supplier_name} · {formatNumber(po.liters_ordered)}L</span>
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <span className="text-sm font-light text-gray-800">{formatCurrency(po.total_amount)}</span>
+                        <span className="text-xs font-light text-gray-400">{format(new Date(po.created_at), 'MMM d')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
 
         </div>
       )}
