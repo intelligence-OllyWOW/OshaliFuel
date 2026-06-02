@@ -343,10 +343,22 @@ export default function FinanceDashboard() {
     }
   }
 
+  const periodLabels: Record<DatePreset, string> = {
+    today: "Today's",
+    yesterday: "Yesterday's",
+    this_week: "This Week's",
+    last_week: "Last Week's",
+    this_month: "This Month's",
+    last_month: "Last Month's",
+    this_year: "This Year's",
+    custom: "Custom Period",
+  };
+  const periodLabel = periodLabels[datePreset];
+
   const drillDownTitles: Record<string, string> = {
-    revenue: `${periodLabels[datePreset] || ''} Revenue Transactions`,
-    purchases: `${periodLabels[datePreset] || ''} Purchase Orders`,
-    expenses: `${periodLabels[datePreset] || ''} Approved Expenses`,
+    revenue: `${periodLabel} Revenue Transactions`,
+    purchases: `${periodLabel} Purchase Orders`,
+    expenses: `${periodLabel} Approved Expenses`,
     settled: 'Settled Invoices',
     unsettled: 'Unsettled Invoices',
   };
@@ -373,18 +385,6 @@ export default function FinanceDashboard() {
     ];
     downloadCSV(`finance_${drillDown}_report.csv`, rows);
   }
-
-  const periodLabels: Record<DatePreset, string> = {
-    today: "Today's",
-    yesterday: "Yesterday's",
-    this_week: "This Week's",
-    last_week: "Last Week's",
-    this_month: "This Month's",
-    last_month: "Last Month's",
-    this_year: "This Year's",
-    custom: "Custom Period",
-  };
-  const periodLabel = periodLabels[datePreset];
 
   const statCards = [
     {
