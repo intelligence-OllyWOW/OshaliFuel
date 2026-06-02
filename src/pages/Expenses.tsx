@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Plus,
   Upload,
@@ -12,8 +12,10 @@ import {
   Trash2,
   ChevronDown,
   Filter,
+  Download,
+  Calendar,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTestingMode } from '../contexts/TestingModeContext';
@@ -107,6 +109,36 @@ function StatusBadge({ status }: { status: ExpenseStatus }) {
   );
 }
 
+// ─── Date Range Helpers ──────────────────────────────────────────────────────
+
+type DatePreset = 'all' | 'today' | 'week' | 'month' | 'custom';
+
+function getPresetRange(preset: DatePreset): { from: string; to: string } | null {
+  if (preset === 'all') return null;
+  const now = new Date();
+  switch (preset) {
+    case 'today':
+      return { from: format(startOfDay(now), 'yyyy-MM-dd'), to: format(endOfDay(now), 'yyyy-MM-dd') };
+    case 'week':
+      return { from: format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'), to: format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd') };
+    case 'month':
+      return { from: format(startOfMonth(now), 'yyyy-MM-dd'), to: format(endOfMonth(now), 'yyyy-MM-dd') };
+    default:
+      return null;
+  }
+}
+
+function downloadCSV(filename: string, rows: string[][]): void {
+  const csv = rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Expenses() {
@@ -128,6 +160,9 @@ export default function Expenses() {
 
   const [filterStatus, setFilterStatus] = useState<ExpenseStatus | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [datePreset, setDatePreset] = useState<DatePreset>('all');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
 
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
@@ -391,11 +426,47 @@ export default function Expenses() {
 
   // ── Filtered expenses ──────────────────────────────────────────────────────
 
-  const filtered = expenses.filter((e) => {
-    const statusOk = filterStatus === 'all' || e.status === filterStatus;
-    const catOk = filterCategory === 'all' || e.category_id === filterCategory;
-    return statusOk && catOk;
-  });
+  const filtered = useMemo(() => {
+    const dateRange = datePreset === 'custom'
+      ? (customFrom && customTo ? { from: customFrom, to: customTo } : null)
+      : getPresetRange(datePreset);
+
+    return expenses.filter((e) => {
+      const statusOk = filterStatus === 'all' || e.status === filterStatus;
+      const catOk = filterCategory === 'all' || e.category_id === filterCategory;
+      let dateOk = true;
+      if (dateRange) {
+        const expDate = e.expense_date;
+        dateOk = expDate >= dateRange.from && expDate <= dateRange.to;
+      }
+      return statusOk && catOk && dateOk;
+    });
+  }, [expenses, filterStatus, filterCategory, datePreset, customFrom, customTo]);
+
+  const filteredTotal = useMemo(
+    () => filtered.reduce((sum, e) => sum + e.amount, 0),
+    [filtered]
+  );
+
+  function handleExportCSV() {
+    const rows = [
+      ['Expense #', 'Title', 'Category', 'Date', 'Amount (N$)', 'Status', 'Submitted By', 'Notes'],
+      ...filtered.map((e) => [
+        e.expense_number,
+        e.title,
+        e.category?.name || '',
+        format(new Date(e.expense_date), 'yyyy-MM-dd'),
+        e.amount.toFixed(2),
+        e.status,
+        e.submitter?.full_name || '',
+        e.notes || '',
+      ]),
+      [],
+      ['Total', '', '', '', filteredTotal.toFixed(2), '', '', ''],
+    ];
+    const label = datePreset === 'all' ? 'all' : datePreset === 'custom' ? `${customFrom}_${customTo}` : datePreset;
+    downloadCSV(`expenses_${label}.csv`, rows);
+  }
 
   // Summary stats for finance/GM view
   const totalSubmitted = expenses
@@ -457,31 +528,118 @@ export default function Expenses() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-400" strokeWidth={1} />
+      <div className="space-y-3 mb-4">
+        {/* Date presets */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Calendar className="w-4 h-4 text-gray-400" strokeWidth={1} />
+          {([
+            { label: 'All Time', value: 'all' as DatePreset },
+            { label: 'Today', value: 'today' as DatePreset },
+            { label: 'This Week', value: 'week' as DatePreset },
+            { label: 'This Month', value: 'month' as DatePreset },
+            { label: 'Custom', value: 'custom' as DatePreset },
+          ]).map((p) => (
+            <button
+              key={p.value}
+              onClick={() => setDatePreset(p.value)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              style={
+                datePreset === p.value
+                  ? { backgroundColor: '#1B2D5B', color: 'white' }
+                  : { backgroundColor: '#f1f5f9', color: '#475569' }
+              }
+            >
+              {p.label}
+            </button>
+          ))}
+          {datePreset === 'custom' && (
+            <div className="flex items-center gap-2 ml-1">
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-gray-300"
+              />
+              <span className="text-gray-400 text-xs">to</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-gray-300"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Status and category filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gray-400" strokeWidth={1} />
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as ExpenseStatus | 'all')}
+              className="text-sm font-light border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-gray-300"
+            >
+              <option value="all">All statuses</option>
+              <option value="submitted">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="draft">Draft</option>
+            </select>
+          </div>
           <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as ExpenseStatus | 'all')}
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
             className="text-sm font-light border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-gray-300"
           >
-            <option value="all">All statuses</option>
-            <option value="submitted">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="draft">Draft</option>
+            <option value="all">All categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
           </select>
+
+          <button
+            onClick={handleExportCSV}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition-colors ml-auto"
+          >
+            <Download size={13} />
+            Export CSV
+          </button>
         </div>
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          className="text-sm font-light border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-gray-300"
-        >
-          <option value="all">All categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+
+        {/* Period totals */}
+        {datePreset !== 'all' && (
+          <div className="flex items-center gap-4 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
+            <div>
+              <p className="text-xs font-light text-gray-500">Period Total</p>
+              <p className="text-lg font-semibold" style={{ color: '#1B2D5B' }}>{formatCurrency(filteredTotal)}</p>
+            </div>
+            <div className="h-8 w-px bg-gray-200" />
+            <div>
+              <p className="text-xs font-light text-gray-500">Claims</p>
+              <p className="text-lg font-semibold" style={{ color: '#1B2D5B' }}>{filtered.length}</p>
+            </div>
+            {filtered.length > 0 && (
+              <>
+                <div className="h-8 w-px bg-gray-200" />
+                <div>
+                  <p className="text-xs font-light text-gray-500">Approved</p>
+                  <p className="text-lg font-semibold text-green-700">
+                    {formatCurrency(filtered.filter(e => e.status === 'approved').reduce((s, e) => s + e.amount, 0))}
+                  </p>
+                </div>
+                <div className="h-8 w-px bg-gray-200" />
+                <div>
+                  <p className="text-xs font-light text-gray-500">Pending</p>
+                  <p className="text-lg font-semibold text-yellow-700">
+                    {formatCurrency(filtered.filter(e => e.status === 'submitted').reduce((s, e) => s + e.amount, 0))}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Expenses list */}
