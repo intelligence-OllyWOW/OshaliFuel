@@ -45,6 +45,34 @@ interface DeletionImpact {
   warnings: string[];
 }
 
+interface GRLinkedInvoice {
+  id: string;
+  invoice_number: string;
+  total_amount: number;
+  status: string;
+  invoice_date: string | null;
+}
+
+interface GRSharedGr {
+  id: string;
+  gr_number: string;
+  created_at: string;
+  po_id: string;
+  shared_invoices: { id: string; invoice_number: string }[];
+}
+
+interface GRDeletionAnalysis {
+  gr_id: string;
+  gr_number: string;
+  inventory_items_to_delete: number;
+  tank_decrease_liters: number;
+  invoices_to_delete: number;
+  invoice_line_items_to_delete: number;
+  liters_restored_to_inventory: number;
+  invoices: GRLinkedInvoice[];
+  shared_grs: GRSharedGr[];
+}
+
 export default function Settings() {
   const { profile } = useAuth();
   const { refresh: refreshTestingMode } = useTestingMode();
@@ -70,6 +98,8 @@ export default function Settings() {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<DocumentOption | null>(null);
   const [deletionImpact, setDeletionImpact] = useState<DeletionImpact | null>(null);
+  const [grAnalysis, setGrAnalysis] = useState<GRDeletionAnalysis | null>(null);
+  const [selectedSharedGrIds, setSelectedSharedGrIds] = useState<Set<string>>(new Set());
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteMessage, setDeleteMessage] = useState('');
@@ -462,8 +492,21 @@ export default function Settings() {
   async function handleSelectDocument(doc: DocumentOption) {
     setSelectedDocument(doc);
     setDeletionImpact(null);
+    setGrAnalysis(null);
+    setSelectedSharedGrIds(new Set());
 
     try {
+      if (selectedDocType === 'GR') {
+        const { data, error } = await supabase.rpc('analyze_gr_deletion', {
+          p_gr_id: doc.id,
+        });
+
+        if (error) throw error;
+        setGrAnalysis(data as GRDeletionAnalysis);
+        setShowDeleteModal(true);
+        return;
+      }
+
       const { data, error } = await supabase.rpc('get_deletion_impact', {
         p_doc_type: selectedDocType,
         p_doc_id: doc.id,
@@ -474,7 +517,10 @@ export default function Settings() {
       setShowDeleteModal(true);
     } catch (error) {
       console.error('Error getting deletion impact:', error);
-      setDeleteMessage('Error analyzing deletion impact');
+      const message =
+        (error as { message?: string })?.message ||
+        (error ? JSON.stringify(error) : 'Unknown error');
+      setDeleteMessage(`Error analyzing deletion impact: ${message}`);
     }
   }
 
@@ -485,6 +531,29 @@ export default function Settings() {
     setDeleteMessage('');
 
     try {
+      if (selectedDocType === 'GR') {
+        const grIds = [selectedDocument.id, ...Array.from(selectedSharedGrIds)];
+        const { data, error } = await supabase.rpc('delete_goods_received_cascade', {
+          p_gr_ids: grIds,
+        });
+
+        if (error) throw error;
+
+        const result = data as { success: boolean; goods_received_deleted: number; invoices_deleted: number };
+        if (result.success) {
+          const grsLabel = result.goods_received_deleted === 1 ? 'Goods Received' : `${result.goods_received_deleted} Goods Received records`;
+          const invoicesPart = result.invoices_deleted > 0 ? ` and ${result.invoices_deleted} linked invoice${result.invoices_deleted === 1 ? '' : 's'}` : '';
+          setDeleteMessage(`Successfully deleted ${grsLabel}${invoicesPart}`);
+          setDocuments(documents.filter(d => d.id !== selectedDocument.id && !selectedSharedGrIds.has(d.id)));
+          setShowDeleteModal(false);
+          setSelectedDocument(null);
+          setGrAnalysis(null);
+          setSelectedSharedGrIds(new Set());
+          setTimeout(() => setDeleteMessage(''), 5000);
+        }
+        return;
+      }
+
       let functionName = '';
       switch (selectedDocType) {
         case 'PR':
@@ -492,9 +561,6 @@ export default function Settings() {
           break;
         case 'PO':
           functionName = 'delete_purchase_order';
-          break;
-        case 'GR':
-          functionName = 'delete_goods_received';
           break;
         case 'INVOICE':
           functionName = 'delete_invoice';
@@ -506,7 +572,6 @@ export default function Settings() {
 
       const paramName = selectedDocType === 'PR' ? 'p_pr_id' :
                         selectedDocType === 'PO' ? 'p_po_id' :
-                        selectedDocType === 'GR' ? 'p_gr_id' :
                         selectedDocType === 'INVOICE' ? 'p_invoice_id' : 'p_dn_id';
 
       const { data, error } = await supabase.rpc(functionName, {
@@ -1020,7 +1085,126 @@ export default function Settings() {
             </div>
           )}
 
-          {deletionImpact && (
+          {selectedDocType === 'GR' && grAnalysis && (
+            <div className="space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <h4 className="text-sm font-medium text-red-900 mb-2 flex items-center gap-2">
+                  <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                  Will be permanently deleted
+                </h4>
+                <div className="space-y-1 text-xs text-red-800">
+                  <div className="flex justify-between">
+                    <span>Goods Received</span>
+                    <span className="font-medium">{1 + selectedSharedGrIds.size}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Inventory items</span>
+                    <span className="font-medium">{grAnalysis.inventory_items_to_delete}</span>
+                  </div>
+                  {grAnalysis.invoices_to_delete > 0 && (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Linked invoices</span>
+                        <span className="font-medium">{grAnalysis.invoices_to_delete}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Invoice line items</span>
+                        <span className="font-medium">{grAnalysis.invoice_line_items_to_delete}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {grAnalysis.invoices && grAnalysis.invoices.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <h4 className="text-sm font-medium text-amber-900 mb-2 flex items-center gap-2">
+                    <FileText className="w-4 h-4" strokeWidth={1.5} />
+                    Invoices that will be deleted automatically
+                  </h4>
+                  <p className="text-xs text-amber-800 mb-3">
+                    These invoices reference inventory from this Goods Received and will be removed. Inventory and tank levels affected by them will be restored before the GR's stock is removed.
+                  </p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {grAnalysis.invoices.map((inv) => (
+                      <div key={inv.id} className="flex justify-between items-center text-xs text-amber-900 bg-white/60 rounded px-2 py-1">
+                        <span className="font-medium">{inv.invoice_number}</span>
+                        <span className="text-amber-700">
+                          {inv.status}{inv.invoice_date ? ` - ${inv.invoice_date.split('T')[0]}` : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {grAnalysis.shared_grs && grAnalysis.shared_grs.length > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                  <h4 className="text-sm font-medium text-orange-900 mb-2 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" strokeWidth={1.5} />
+                    Shared Goods Received
+                  </h4>
+                  <p className="text-xs text-orange-800 mb-3">
+                    The invoices above also reference inventory from the following other Goods Received records. Their stock will be restored when the linked invoices are deleted. Optionally select any you also want to delete.
+                  </p>
+                  <div className="space-y-2">
+                    {grAnalysis.shared_grs.map((sharedGr) => {
+                      const checked = selectedSharedGrIds.has(sharedGr.id);
+                      return (
+                        <label
+                          key={sharedGr.id}
+                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            checked ? 'border-red-300 bg-red-50' : 'border-orange-200 bg-white hover:bg-orange-100/40'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setSelectedSharedGrIds((prev) => {
+                                const next = new Set(prev);
+                                if (e.target.checked) next.add(sharedGr.id);
+                                else next.delete(sharedGr.id);
+                                return next;
+                              });
+                            }}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900">{sharedGr.gr_number}</p>
+                            <p className="text-xs text-gray-600 mt-0.5">
+                              Shares invoice{sharedGr.shared_invoices.length === 1 ? '' : 's'}: {sharedGr.shared_invoices.map((i) => i.invoice_number).join(', ')}
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <h4 className="text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4" strokeWidth={1.5} />
+                  Tank impact
+                </h4>
+                <div className="space-y-1 text-xs text-blue-800">
+                  <div className="flex justify-between">
+                    <span>Tank decrease (current GR)</span>
+                    <span className="font-medium">{Number(grAnalysis.tank_decrease_liters).toLocaleString()} L</span>
+                  </div>
+                  {grAnalysis.invoices_to_delete > 0 && (
+                    <div className="flex justify-between">
+                      <span>Inventory restored from invoices</span>
+                      <span className="font-medium">{Number(grAnalysis.liters_restored_to_inventory).toLocaleString()} L</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedDocType !== 'GR' && deletionImpact && (
             <div className="space-y-4">
               {Object.keys(deletionImpact.will_delete).length > 0 && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4">
