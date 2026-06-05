@@ -69,6 +69,8 @@ export default function GeneralManagerDashboard() {
 
       const startISO = start.toISOString();
       const endISO = end.toISOString();
+      const startDate = format(start, 'yyyy-MM-dd');
+      const endDate = format(end, 'yyyy-MM-dd');
 
       const [
         tanksResult,
@@ -83,8 +85,8 @@ export default function GeneralManagerDashboard() {
         supabase
           .from('invoices')
           .select('liters_sold, total_amount')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
           .limit(50000),
         supabase.from('clients').select('id'),
         supabase.from('pricing_settings').select('price_per_liter').order('created_at', { ascending: false }).limit(1).maybeSingle(),
@@ -93,8 +95,8 @@ export default function GeneralManagerDashboard() {
         supabase
           .from('invoices')
           .select('client_id, clients(name), total_amount')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
           .not('client_id', 'is', null)
           .limit(50000)
       ]);

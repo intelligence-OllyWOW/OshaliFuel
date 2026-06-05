@@ -75,6 +75,8 @@ export default function OperationsDashboard() {
 
       const startISO = start.toISOString();
       const endISO = end.toISOString();
+      const startDate = format(start, 'yyyy-MM-dd');
+      const endDate = format(end, 'yyyy-MM-dd');
 
       const [
         tanksResult,
@@ -88,18 +90,18 @@ export default function OperationsDashboard() {
         supabase
           .from('invoices')
           .select('liters_sold')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
           .limit(50000),
         supabase.from('purchase_requisitions').select('id').in('status', ['submitted', 'under_review']),
         supabase.from('system_settings').select('tank_low_level_threshold, tank_high_level_threshold, tank_critical_level_threshold').maybeSingle(),
         supabase
           .from('invoices')
-          .select('created_at, liters_sold')
-          .gte('created_at', subDays(now, 6).toISOString())
-          .lte('created_at', endOfDay(now).toISOString())
+          .select('invoice_date, liters_sold')
+          .gte('invoice_date', format(subDays(now, 6), 'yyyy-MM-dd'))
+          .lte('invoice_date', format(now, 'yyyy-MM-dd'))
           .neq('status', 'void')
-          .order('created_at', { ascending: true })
+          .order('invoice_date', { ascending: true })
           .limit(50000),
         supabase
           .from('delivery_notes')
@@ -140,7 +142,7 @@ export default function OperationsDashboard() {
       }
 
       weekSalesResult.data?.forEach((invoice) => {
-        const dateKey = format(new Date(invoice.created_at), 'MMM dd');
+        const dateKey = format(new Date(invoice.invoice_date + 'T00:00:00'), 'MMM dd');
         if (dailySalesMap.hasOwnProperty(dateKey)) {
           dailySalesMap[dateKey] += invoice.liters_sold;
         }

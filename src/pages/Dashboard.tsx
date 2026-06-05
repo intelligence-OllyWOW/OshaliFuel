@@ -120,6 +120,8 @@ export default function Dashboard() {
       const { start, end } = getDateRangeFromPreset(datePreset, customStartDate, customEndDate);
       const startISO = start.toISOString();
       const endISO = end.toISOString();
+      const startDate = format(start, 'yyyy-MM-dd');
+      const endDate = format(end, 'yyyy-MM-dd');
 
       const [
         tanksResult,
@@ -136,20 +138,20 @@ export default function Dashboard() {
         supabase
           .from('invoices')
           .select('liters_sold, total_amount')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO),
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate),
         supabase
           .from('invoices')
           .select('id')
           .eq('status', 'settled')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO),
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate),
         supabase
           .from('invoices')
           .select('id')
           .eq('status', 'unsettled')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO),
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate),
         supabase.from('purchase_requisitions').select('id').in('status', ['submitted', 'under_review']),
         supabase.from('pricing_settings').select('price_per_liter').order('created_at', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('purchase_orders').select('price_per_liter').order('created_at', { ascending: false }).limit(1).maybeSingle(),
@@ -214,11 +216,11 @@ export default function Dashboard() {
 
       const { data: recentInvoices } = await supabase
         .from('invoices')
-        .select('created_at, total_amount')
-        .gte('created_at', startOfDay(weekStart).toISOString())
-        .lte('created_at', endOfDay(weekEnd).toISOString())
+        .select('invoice_date, total_amount')
+        .gte('invoice_date', format(weekStart, 'yyyy-MM-dd'))
+        .lte('invoice_date', format(weekEnd, 'yyyy-MM-dd'))
         .neq('status', 'void')
-        .order('created_at', { ascending: true });
+        .order('invoice_date', { ascending: true });
 
       const dailyRevenueMap: { [key: string]: number } = {};
 
@@ -229,7 +231,7 @@ export default function Dashboard() {
       }
 
       recentInvoices?.forEach((invoice) => {
-        const dateKey = format(new Date(invoice.created_at), 'MMM dd');
+        const dateKey = format(new Date(invoice.invoice_date + 'T00:00:00'), 'MMM dd');
         if (dailyRevenueMap.hasOwnProperty(dateKey)) {
           dailyRevenueMap[dateKey] += invoice.total_amount;
         }

@@ -139,6 +139,8 @@ export function useFinanceReports(dateRange: DateRange): FinanceReportsResult {
     // Convert YYYY-MM-DD to ISO timestamps covering full days
     const fromISO = startOfDay(new Date(dateRange.from)).toISOString();
     const toISO = endOfDay(new Date(dateRange.to)).toISOString();
+    const fromDate = dateRange.from;
+    const toDate = dateRange.to;
 
     const [
       revenueResult,
@@ -150,19 +152,19 @@ export function useFinanceReports(dateRange: DateRange): FinanceReportsResult {
       // 1. Revenue — raw invoice rows, grouped client-side
       supabase
         .from('invoices')
-        .select('created_at, total_amount, liters_sold')
+        .select('invoice_date, total_amount, liters_sold')
         .neq('status', 'void')
-        .gte('created_at', fromISO)
-        .lte('created_at', toISO)
-        .order('created_at', { ascending: true })
+        .gte('invoice_date', fromDate)
+        .lte('invoice_date', toDate)
+        .order('invoice_date', { ascending: true })
         .limit(50000),
 
       // 2. Profit margin — line items with inner-joined invoice for filtering
       supabase
         .from('invoice_line_items')
-        .select('liters_from_item, cost_per_liter, selling_price_per_liter, invoices!inner(created_at, status)')
-        .gte('invoices.created_at', fromISO)
-        .lte('invoices.created_at', toISO)
+        .select('liters_from_item, cost_per_liter, selling_price_per_liter, invoices!inner(invoice_date, status)')
+        .gte('invoices.invoice_date', fromDate)
+        .lte('invoices.invoice_date', toDate)
         .neq('invoices.status', 'void')
         .limit(50000),
 
@@ -171,17 +173,17 @@ export function useFinanceReports(dateRange: DateRange): FinanceReportsResult {
         .from('invoices')
         .select('total_amount, liters_sold, client:client_id(name)')
         .neq('status', 'void')
-        .gte('created_at', fromISO)
-        .lte('created_at', toISO)
+        .gte('invoice_date', fromDate)
+        .lte('invoice_date', toDate)
         .limit(50000),
 
       // 4. Settlement rate — all invoices in range with details for drill-down
       supabase
         .from('invoices')
         .select('id, invoice_number, status, total_amount, liters_sold, invoice_date, created_at, client:client_id(name)')
-        .gte('created_at', fromISO)
-        .lte('created_at', toISO)
-        .order('created_at', { ascending: false })
+        .gte('invoice_date', fromDate)
+        .lte('invoice_date', toDate)
+        .order('invoice_date', { ascending: false })
         .limit(50000),
 
       // 5. Procurement costs — goods_received rows in range
@@ -210,7 +212,7 @@ export function useFinanceReports(dateRange: DateRange): FinanceReportsResult {
       }
 
       rows.forEach((inv) => {
-        const key = format(new Date(inv.created_at), 'yyyy-MM-dd');
+        const key = inv.invoice_date;
         if (revenueMap[key]) {
           revenueMap[key].revenue += Number(inv.total_amount) || 0;
           revenueMap[key].liters += Number(inv.liters_sold) || 0;

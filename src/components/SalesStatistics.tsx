@@ -21,12 +21,12 @@ async function fetchAllInvoices(
       .from('invoices')
       .select(`
         id, invoice_number, client_id, liters_sold, total_amount,
-        status, payment_method, created_at,
+        status, payment_method, invoice_date,
         client:client_id (name)
       `)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
-      .order('created_at', { ascending: true })
+      .gte('invoice_date', format(startDate, 'yyyy-MM-dd'))
+      .lte('invoice_date', format(endDate, 'yyyy-MM-dd'))
+      .order('invoice_date', { ascending: true })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
     if (error) throw error;
@@ -78,7 +78,7 @@ interface Invoice {
   total_amount: number;
   status: string;
   payment_method: string | null;
-  created_at: string;
+  invoice_date: string;
   client?: { name: string } | null;
 }
 
@@ -181,7 +181,7 @@ export default function SalesStatistics() {
     const dailyData = days.map(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
       const dayInvoices = validInvoices.filter(inv =>
-        format(new Date(inv.created_at), 'yyyy-MM-dd') === dayStr
+        inv.invoice_date === dayStr
       );
       return {
         date: dayStr,

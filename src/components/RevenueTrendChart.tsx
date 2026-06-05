@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import OshaliLoader from './OshaliLoader';
 import { TrendingUp } from 'lucide-react';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
@@ -31,52 +31,50 @@ export default function RevenueTrendChart() {
   const fetchDateRangeRevenue = async () => {
     setLoading(true);
     try {
-      const startDate = startOfDay(new Date(dateRangeStart));
-      const endDate = endOfDay(new Date(dateRangeEnd));
       const dailyRevenueMap: Record<string, number> = {};
 
       if (dateRangeRevenueType === 'realized') {
         const { data: invoices } = await supabase
           .from('invoices')
-          .select('total_amount, created_at')
+          .select('total_amount, invoice_date')
           .eq('status', 'settled')
-          .gte('created_at', startDate.toISOString())
-          .lte('created_at', endDate.toISOString())
-          .order('created_at', { ascending: true })
+          .gte('invoice_date', dateRangeStart)
+          .lte('invoice_date', dateRangeEnd)
+          .order('invoice_date', { ascending: true })
           .limit(50000);
 
         invoices?.forEach(invoice => {
-          const day = format(new Date(invoice.created_at), 'yyyy-MM-dd');
+          const day = invoice.invoice_date;
           dailyRevenueMap[day] = (dailyRevenueMap[day] || 0) + (Number(invoice.total_amount) || 0);
         });
 
       } else if (dateRangeRevenueType === 'unrealized') {
         const { data: invoices } = await supabase
           .from('invoices')
-          .select('total_amount, created_at')
+          .select('total_amount, invoice_date')
           .eq('status', 'unsettled')
-          .gte('created_at', startDate.toISOString())
-          .lte('created_at', endDate.toISOString())
-          .order('created_at', { ascending: true })
+          .gte('invoice_date', dateRangeStart)
+          .lte('invoice_date', dateRangeEnd)
+          .order('invoice_date', { ascending: true })
           .limit(50000);
 
         invoices?.forEach(invoice => {
-          const day = format(new Date(invoice.created_at), 'yyyy-MM-dd');
+          const day = invoice.invoice_date;
           dailyRevenueMap[day] = (dailyRevenueMap[day] || 0) + (Number(invoice.total_amount) || 0);
         });
 
       } else {
         const { data: invoices } = await supabase
           .from('invoices')
-          .select('total_amount, created_at')
+          .select('total_amount, invoice_date')
           .in('status', ['settled', 'unsettled'])
-          .gte('created_at', startDate.toISOString())
-          .lte('created_at', endDate.toISOString())
-          .order('created_at', { ascending: true })
+          .gte('invoice_date', dateRangeStart)
+          .lte('invoice_date', dateRangeEnd)
+          .order('invoice_date', { ascending: true })
           .limit(50000);
 
         invoices?.forEach(invoice => {
-          const day = format(new Date(invoice.created_at), 'yyyy-MM-dd');
+          const day = invoice.invoice_date;
           dailyRevenueMap[day] = (dailyRevenueMap[day] || 0) + (Number(invoice.total_amount) || 0);
         });
       }

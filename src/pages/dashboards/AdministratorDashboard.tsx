@@ -75,6 +75,8 @@ export default function AdministratorDashboard() {
 
       const startISO = start.toISOString();
       const endISO = end.toISOString();
+      const startDate = format(start, 'yyyy-MM-dd');
+      const endDate = format(end, 'yyyy-MM-dd');
 
       const [
         tanksResult,
@@ -88,8 +90,8 @@ export default function AdministratorDashboard() {
         supabase
           .from('invoices')
           .select('liters_sold, total_amount')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
           .limit(50000),
         supabase.from('purchase_requisitions').select('id').in('status', ['submitted', 'under_review']),
         supabase

@@ -120,6 +120,8 @@ export default function FinanceDashboard() {
 
       const startISO = start.toISOString();
       const endISO = end.toISOString();
+      const startDate = format(start, 'yyyy-MM-dd');
+      const endDate = format(end, 'yyyy-MM-dd');
 
       const [
         invoicesResult,
@@ -134,22 +136,22 @@ export default function FinanceDashboard() {
         supabase
           .from('invoices')
           .select('total_amount')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
           .limit(50000),
         supabase
           .from('invoices')
           .select('id')
           .eq('status', 'settled')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
           .limit(50000),
         supabase
           .from('invoices')
           .select('id')
           .eq('status', 'unsettled')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
           .limit(50000),
         supabase
           .from('purchase_orders')
@@ -163,17 +165,17 @@ export default function FinanceDashboard() {
           .lte('created_at', endISO),
         supabase
           .from('invoices')
-          .select('created_at, total_amount')
-          .gte('created_at', subDays(now, 6).toISOString())
-          .lte('created_at', endOfDay(now).toISOString())
+          .select('invoice_date, total_amount')
+          .gte('invoice_date', format(subDays(now, 6), 'yyyy-MM-dd'))
+          .lte('invoice_date', format(now, 'yyyy-MM-dd'))
           .neq('status', 'void')
-          .order('created_at', { ascending: true })
+          .order('invoice_date', { ascending: true })
           .limit(50000),
         supabase
           .from('invoice_line_items')
-          .select('liters_from_item, cost_per_liter, invoices!inner(created_at, status)')
-          .gte('invoices.created_at', startISO)
-          .lte('invoices.created_at', endISO)
+          .select('liters_from_item, cost_per_liter, invoices!inner(invoice_date, status)')
+          .gte('invoices.invoice_date', startDate)
+          .lte('invoices.invoice_date', endDate)
           .neq('invoices.status', 'void'),
         supabase
           .from('expenses')
@@ -196,7 +198,7 @@ export default function FinanceDashboard() {
       }
 
       recentRevenueResult.data?.forEach((invoice) => {
-        const dateKey = format(new Date(invoice.created_at), 'MMM dd');
+        const dateKey = format(new Date(invoice.invoice_date + 'T00:00:00'), 'MMM dd');
         if (dailyRevenueMap.hasOwnProperty(dateKey)) {
           dailyRevenueMap[dateKey] += invoice.total_amount;
         }
@@ -240,7 +242,7 @@ export default function FinanceDashboard() {
         default: start = startOfMonth(now); end = endOfMonth(now);
       }
     }
-    return { startISO: start.toISOString(), endISO: end.toISOString() };
+    return { startISO: start.toISOString(), endISO: end.toISOString(), startDate: format(start, 'yyyy-MM-dd'), endDate: format(end, 'yyyy-MM-dd') };
   }
 
   async function handleDrillDown(type: DrillDownType) {
@@ -250,7 +252,7 @@ export default function FinanceDashboard() {
     setDrillDownSearch('');
     setDrillDownRecords([]);
 
-    const { startISO, endISO } = getDateRange();
+    const { startISO, endISO, startDate, endDate } = getDateRange();
 
     try {
       let records: DrillDownRecord[] = [];
@@ -258,16 +260,16 @@ export default function FinanceDashboard() {
       if (type === 'revenue') {
         const { data } = await supabase
           .from('invoices')
-          .select('id, invoice_number, total_amount, status, created_at, client:client_id(name)')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
-          .order('created_at', { ascending: false });
+          .select('id, invoice_number, total_amount, status, invoice_date, client:client_id(name)')
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
+          .order('invoice_date', { ascending: false });
         records = (data || []).map((inv: any) => ({
           id: inv.id,
           label: inv.invoice_number,
           sublabel: inv.client?.name || 'Walk-in',
           amount: inv.total_amount,
-          date: inv.created_at,
+          date: inv.invoice_date,
           status: inv.status,
         }));
       } else if (type === 'purchases') {
@@ -304,33 +306,33 @@ export default function FinanceDashboard() {
       } else if (type === 'settled') {
         const { data } = await supabase
           .from('invoices')
-          .select('id, invoice_number, total_amount, status, settled_at, created_at, payment_method, client:client_id(name)')
+          .select('id, invoice_number, total_amount, status, settled_at, invoice_date, payment_method, client:client_id(name)')
           .eq('status', 'settled')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
           .order('settled_at', { ascending: false });
         records = (data || []).map((inv: any) => ({
           id: inv.id,
           label: inv.invoice_number,
           sublabel: `${inv.client?.name || 'Walk-in'} · ${inv.payment_method || ''}`,
           amount: inv.total_amount,
-          date: inv.settled_at || inv.created_at,
+          date: inv.settled_at || inv.invoice_date,
           status: 'settled',
         }));
       } else if (type === 'unsettled') {
         const { data } = await supabase
           .from('invoices')
-          .select('id, invoice_number, total_amount, status, created_at, client:client_id(name)')
+          .select('id, invoice_number, total_amount, status, invoice_date, client:client_id(name)')
           .eq('status', 'unsettled')
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
-          .order('created_at', { ascending: false });
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
+          .order('invoice_date', { ascending: false });
         records = (data || []).map((inv: any) => ({
           id: inv.id,
           label: inv.invoice_number,
           sublabel: inv.client?.name || 'Walk-in',
           amount: inv.total_amount,
-          date: inv.created_at,
+          date: inv.invoice_date,
           status: 'unsettled',
         }));
       }

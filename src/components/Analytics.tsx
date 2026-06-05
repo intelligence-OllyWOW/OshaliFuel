@@ -45,9 +45,9 @@ export default function Analytics() {
 
       const { data: invoices } = await supabase
         .from('invoices')
-        .select('created_at, total_amount, status')
-        .gte('created_at', yearStart.toISOString())
-        .lte('created_at', yearEnd.toISOString())
+        .select('invoice_date, total_amount, status')
+        .gte('invoice_date', format(yearStart, 'yyyy-MM-dd'))
+        .lte('invoice_date', format(yearEnd, 'yyyy-MM-dd'))
         .neq('status', 'void')
         .limit(50000);
 
@@ -59,7 +59,7 @@ export default function Analytics() {
       });
 
       invoices?.forEach((invoice) => {
-        const month = format(new Date(invoice.created_at), 'MMM');
+        const month = format(new Date(invoice.invoice_date + 'T00:00:00'), 'MMM');
         monthlyRevenue[month] += invoice.total_amount;
       });
 
@@ -75,11 +75,11 @@ export default function Analytics() {
 
       const { data: invoices } = await supabase
         .from('invoices')
-        .select('id, created_at, total_amount')
+        .select('id, invoice_date, total_amount')
         .eq('status', statusFilter)
-        .gte('created_at', new Date(startDate).toISOString())
-        .lte('created_at', new Date(endDate + 'T23:59:59').toISOString())
-        .order('created_at')
+        .gte('invoice_date', startDate)
+        .lte('invoice_date', endDate)
+        .order('invoice_date')
         .limit(50000);
 
       if (!invoices || invoices.length === 0) {
@@ -105,7 +105,7 @@ export default function Analytics() {
       const grouped: { [key: string]: { revenue: number; profit: number } } = {};
 
       invoices.forEach((invoice) => {
-        const date = format(new Date(invoice.created_at), 'MMM dd');
+        const date = format(new Date(invoice.invoice_date + 'T00:00:00'), 'MMM dd');
 
         if (!grouped[date]) {
           grouped[date] = { revenue: 0, profit: 0 };
