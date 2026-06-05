@@ -643,8 +643,6 @@ export default function Sales() {
     }
   }
 
-
-
   const canCreate =
     profile?.role === 'pump_attendant' ||
     profile?.role === 'operations_supervisor' ||
@@ -783,6 +781,53 @@ export default function Sales() {
     return true;
   });
 
+  async function downloadAllInvoicesPDF() {
+    if (filteredInvoices.length === 0) return;
+
+    const { default: autoTable } = await import('jspdf-autotable');
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    pdf.setFontSize(16);
+    pdf.text('Invoice Report', 14, 18);
+    pdf.setFontSize(9);
+    pdf.setTextColor(100);
+    const subtitle = filterStatus !== 'all' || filterClient !== 'all' || filterDateFrom || filterDateTo
+      ? `Filtered: ${filteredInvoices.length} invoices`
+      : `All invoices: ${filteredInvoices.length}`;
+    pdf.text(`${subtitle}  |  Generated: ${format(new Date(), 'dd MMM yyyy, HH:mm')}`, 14, 24);
+    pdf.setTextColor(0);
+
+    const tableData = filteredInvoices.map((inv) => [
+      inv.invoice_number,
+      format(new Date((inv.invoice_date || inv.created_at.split('T')[0]) + 'T00:00:00'), 'dd/MM/yyyy'),
+      inv.client?.name || 'Walk-in',
+      inv.delivery_note_number,
+      `${inv.liters_sold.toLocaleString()}L`,
+      formatCurrency(inv.selling_price_per_liter),
+      formatCurrency(inv.total_amount),
+      inv.status.charAt(0).toUpperCase() + inv.status.slice(1),
+      inv.payment_method ? inv.payment_method.toUpperCase() : '-',
+    ]);
+
+    const totalAmount = filteredInvoices.reduce((s, i) => s + i.total_amount, 0);
+    const totalLiters = filteredInvoices.reduce((s, i) => s + i.liters_sold, 0);
+
+    autoTable(pdf, {
+      startY: 30,
+      head: [['Invoice #', 'Date', 'Client', 'DN #', 'Liters', 'Price/L', 'Total', 'Status', 'Payment']],
+      body: tableData,
+      foot: [['', '', '', 'TOTALS', `${totalLiters.toLocaleString()}L`, '', formatCurrency(totalAmount), '', '']],
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 30, 30], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
+      margin: { left: 14, right: 14 },
+    });
+
+    const dateSuffix = format(new Date(), 'yyyy-MM-dd');
+    pdf.save(`Invoices-${dateSuffix}.pdf`);
+  }
+
   const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -859,6 +904,12 @@ export default function Sales() {
                 className="pl-9 pr-4 py-2 text-sm font-light border border-gray-200 rounded-lg w-72 focus:outline-none focus:ring-1 focus:ring-black focus:border-black"
               />
             </div>
+            {filteredInvoices.length > 0 && (
+              <Button variant="secondary" onClick={() => void downloadAllInvoicesPDF()}>
+                <Download className="w-4 h-4 mr-2" strokeWidth={1} />
+                Download All
+              </Button>
+            )}
             {canCreate && (
               <Button onClick={() => setShowInvoiceModal(true)}>
                 <Plus className="w-4 h-4 mr-2" strokeWidth={1} />
@@ -1803,7 +1854,7 @@ export default function Sales() {
                           FIFO #{index + 1}
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-4 text-sm font-light">
+                      <div className="grid grid-cols-4 gap-4 text-sm font-light">
                         <div>
                           <div className="text-gray-500 text-xs mb-1">Liters</div>
                           <div>{item.liters_from_item.toLocaleString()}L</div>
@@ -1816,6 +1867,12 @@ export default function Sales() {
                           <div className="text-gray-500 text-xs mb-1">Profit/L</div>
                           <div className="text-green-600">
                             {formatCurrency(item.selling_price_per_liter - item.cost_per_liter)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 text-xs mb-1">Line Profit</div>
+                          <div className="text-green-600 font-medium">
+                            {formatCurrency(item.total_profit || (item.selling_price_per_liter - item.cost_per_liter) * item.liters_from_item)}
                           </div>
                         </div>
                       </div>
