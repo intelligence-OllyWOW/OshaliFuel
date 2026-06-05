@@ -139,6 +139,7 @@ export default function Sales() {
     status: 'unsettled',
     payment_method: '',
     payment_reference: '',
+    payment_date: new Date().toISOString().split('T')[0],
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -269,6 +270,10 @@ export default function Sales() {
     setStatusForm({
       status: invoice.status || 'unsettled',
       payment_method: invoice.payment_method || '',
+      payment_reference: (invoice as any).payment_reference || '',
+      payment_date: invoice.settled_at
+        ? new Date(invoice.settled_at).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0],
     });
     setShowStatusModal(true);
   }
@@ -278,6 +283,11 @@ export default function Sales() {
 
     if (statusForm.status === 'settled' && !statusForm.payment_method) {
       alert('Please select a payment method');
+      return;
+    }
+
+    if (statusForm.status === 'settled' && !statusForm.payment_date) {
+      alert('Please select a payment date');
       return;
     }
 
@@ -330,7 +340,8 @@ export default function Sales() {
       };
 
       if (statusForm.status === 'settled') {
-        updateData.settled_at = new Date().toISOString();
+        const paymentDate = new Date(statusForm.payment_date + 'T12:00:00');
+        updateData.settled_at = paymentDate.toISOString();
         updateData.settled_by = profile.id;
       }
 
@@ -1666,6 +1677,15 @@ export default function Sales() {
                 value={statusForm.payment_reference}
                 onChange={(e) =>
                   setStatusForm((prev) => ({ ...prev, payment_reference: e.target.value }))
+                }
+              />
+
+              <Input
+                label="Payment Date *"
+                type="date"
+                value={statusForm.payment_date}
+                onChange={(e) =>
+                  setStatusForm((prev) => ({ ...prev, payment_date: e.target.value }))
                 }
               />
             </div>
