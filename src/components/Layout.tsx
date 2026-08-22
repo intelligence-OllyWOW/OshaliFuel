@@ -21,6 +21,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Wallet,
+  Fuel,
+  Calculator,
+  BookOpen,
+  CalendarClock,
 } from 'lucide-react';
 import { UserRole } from '../lib/database.types';
 import { useNotifications } from '../hooks/useNotifications';
@@ -125,6 +129,30 @@ const navItems: NavItem[] = [
     path: '/expenses',
     icon: <Wallet strokeWidth={1} />,
     roles: ['super_admin', 'general_manager', 'finance', 'administrator', 'operations_supervisor'],
+  },
+  {
+    label: 'Fuel Movement',
+    path: '/fuel-movement',
+    icon: <Fuel strokeWidth={1} />,
+    roles: ['super_admin', 'general_manager', 'administrator', 'operations_supervisor'],
+  },
+  {
+    label: 'Cash-Up',
+    path: '/shift-cashup',
+    icon: <Calculator strokeWidth={1} />,
+    roles: ['super_admin', 'general_manager', 'finance', 'administrator', 'operations_supervisor'],
+  },
+  {
+    label: 'Credit Ledger',
+    path: '/credit-ledger',
+    icon: <BookOpen strokeWidth={1} />,
+    roles: ['super_admin', 'general_manager', 'finance'],
+  },
+  {
+    label: 'Recurring Expenses',
+    path: '/recurring-expenses',
+    icon: <CalendarClock strokeWidth={1} />,
+    roles: ['super_admin', 'general_manager', 'finance', 'administrator'],
   },
   {
     label: 'Reports',

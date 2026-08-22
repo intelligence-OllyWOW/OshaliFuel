@@ -65,17 +65,6 @@ export function buildInvoiceHTML(
   driverName = '',
   attendantName = ''
 ): string {
-  // LAYOUT MAP (mm within container; container left=-10mm in print)
-  // §A: left=0,  top=13mm,  w=100mm, h=34mm
-  // §B: left=108,top=13mm,  w=75mm,  h=34mm
-  // §C: left=0,  top=56mm,  w=100mm, h=37mm
-  // §D: left=108,top=56mm,  w=75mm,  h=37mm
-  // §E: left=0,  top=97mm,  w=181mm, h=14mm
-  // §F: left=0,  top=113mm, w=181mm, h=55mm
-  // §G: left=0,  top=178mm, w=108mm, h=37mm
-  // §iL:left=88, top=178mm, w=38mm,  h=37mm
-  // §iR:left=126,top=178mm, w=35mm,  h=37mm
-
   const date = format(new Date(invoice.invoice_date ?? invoice.created_at), 'dd/MM/yyyy');
   const time = format(new Date(invoice.created_at), 'HH:mm');
 
@@ -86,7 +75,6 @@ export function buildInvoiceHTML(
   const fmt = (n: number): string =>
     'N$ ' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-  // STEP 5 — compact single-token QTY, never wraps
   const qtyDisplay = Math.round(invoice.liters_sold).toLocaleString() + 'L';
 
   const clientName = invoice.client?.name       ?? 'Walk-in Customer';
@@ -103,18 +91,17 @@ export function buildInvoiceHTML(
 @media print {
   @page {
     size: 195mm 202mm;
-    margin: 10mm 10mm 1.5mm 1.5mm;
+    margin: 5mm 5mm 5mm 5mm;
   }
   body { margin: 0; padding: 0; background: #fff; }
   .no-print { display: none !important; }
   .page {
-    position: fixed;
+    position: relative;
     top: 0;
-    left: -10mm;
-    width: 181mm;
-    height: 210mm;
-    margin-top: 3mm;
-    margin-left: 0mm;
+    left: 0;
+    width: 185mm;
+    height: 192mm;
+    margin: 0;
     overflow: visible;
     font-family: 'Courier New', Courier, monospace;
     font-size: 10.5pt;
@@ -145,8 +132,8 @@ body {
 
 .page {
   position: relative;
-  width: 181mm;
-  height: 210mm;
+  width: 185mm;
+  height: 192mm;
   margin: 0 auto;
   overflow: visible;
   font-family: 'Courier New', Courier, monospace;
@@ -159,8 +146,8 @@ body {
 #p-a {
   position: absolute;
   left: 0mm;
-  top: 13mm;
-  width: 100mm;
+  top: 8mm;
+  width: 95mm;
   height: 34mm;
   padding: 1.5mm;
   overflow: hidden;
@@ -174,9 +161,9 @@ body {
 /* §B — Invoice Info */
 #p-b {
   position: absolute;
-  left: 108mm;
-  top: 13mm;
-  width: 75mm;
+  left: 103mm;
+  top: 8mm;
+  width: 80mm;
   height: 34mm;
   padding: 1.5mm;
   overflow: hidden;
@@ -191,9 +178,9 @@ body {
 #p-c {
   position: absolute;
   left: 0mm;
-  top: 56mm;
-  width: 100mm;
-  height: 37mm;
+  top: 48mm;
+  width: 95mm;
+  height: 34mm;
   padding: 1.5mm;
   overflow: hidden;
   font-family: 'Courier New', Courier, monospace;
@@ -206,10 +193,10 @@ body {
 /* §D — Deliver To */
 #p-d {
   position: absolute;
-  left: 108mm;
-  top: 56mm;
-  width: 75mm;
-  height: 37mm;
+  left: 103mm;
+  top: 48mm;
+  width: 80mm;
+  height: 34mm;
   padding: 1.5mm;
   overflow: hidden;
   font-family: 'Courier New', Courier, monospace;
@@ -223,9 +210,9 @@ body {
 #p-e {
   position: absolute;
   left: 0mm;
-  top: 97mm;
-  width: 181mm;
-  height: 14mm;
+  top: 86mm;
+  width: 185mm;
+  height: 12mm;
   padding: 1.5mm;
   display: flex;
   align-items: center;
@@ -242,9 +229,9 @@ body {
 #p-f {
   position: absolute;
   left: 0mm;
-  top: 113mm;
-  width: 181mm;
-  height: 55mm;
+  top: 100mm;
+  width: 185mm;
+  height: 50mm;
   padding: 1.5mm;
   overflow: hidden;
   font-family: 'Courier New', Courier, monospace;
@@ -254,13 +241,13 @@ body {
   line-height: 1.6;
 }
 
-/* §G — Notes */
+/* §G — Notes / Acknowledgement */
 #p-g {
   position: absolute;
   left: 0mm;
-  top: 178mm;
-  width: 108mm;
-  height: 37mm;
+  top: 155mm;
+  width: 100mm;
+  height: 35mm;
   padding: 1.5mm;
   overflow: hidden;
   font-family: 'Courier New', Courier, monospace;
@@ -273,10 +260,10 @@ body {
 /* §i Left — Totals Labels */
 #p-il {
   position: absolute;
-  left: 116mm;
-  top: 180mm;
+  left: 108mm;
+  top: 157mm;
   width: 38mm;
-  height: 37mm;
+  height: 35mm;
   display: flex;
   flex-direction: column;
   justify-content: space-around;
@@ -291,10 +278,10 @@ body {
 /* §i Right — Totals Values */
 #p-ir {
   position: absolute;
-  left: 147mm;
-  top: 180mm;
+  left: 148mm;
+  top: 157mm;
   width: 35mm;
-  height: 37mm;
+  height: 35mm;
   display: flex;
   flex-direction: column;
   justify-content: space-around;
@@ -332,7 +319,7 @@ body {
   color: #000;
 }
 
-/* STEP 2 — column grid: QTY | DESCRIPTION | UNIT | NET */
+/* Column grid: QTY | DESCRIPTION | UNIT | NET */
 .cgrid {
   display: grid;
   grid-template-columns: 28mm 1fr 32mm 35mm;
@@ -376,11 +363,11 @@ body {
 
   <!-- §A Company / Seller -->
   <div id="p-a">
-    <img src="/oshali-logo.png" alt="Oshali Fuel" style="max-height:55px; width:auto; display:block; margin-bottom:2mm;" onerror="this.style.display='none'" />
+    <img src="/oshali-logo.png" alt="Oshali Fuel" style="max-height:50px; width:auto; display:block; margin-bottom:2mm;" onerror="this.style.display='none'" />
     <div class="psec-hdr" style="border-bottom: none;">${config?.company_name ?? 'OSHALI FUEL'}</div>
     <div>${esc(config.company_address)}</div>
-    <div><span class="lbl">Tel: </span>${config.company_tel ? esc(config.company_tel) : '—'}</div>
-    <div><span class="lbl">VAT No: </span>${config.company_vat ? esc(config.company_vat) : '—'}</div>
+    <div><span class="lbl">Tel: </span>${config.company_tel ? esc(config.company_tel) : '\u2014'}</div>
+    <div><span class="lbl">VAT No: </span>${config.company_vat ? esc(config.company_vat) : '\u2014'}</div>
   </div>
 
   <!-- §B Invoice Details -->
@@ -427,9 +414,9 @@ body {
     </div>
   </div>
 
-  <!-- §logo — between §F (ends 168mm) and §G (starts 178mm) -->
-  <div id="p-logo" style="position:absolute;left:0mm;top:135mm;width:181mm;height:60mm;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;">
-    <img src="${window.location.origin}/oshali-logo.png" style="width:100%;height:100%;max-width:181mm;max-height:60mm;object-fit:contain;object-position:center;opacity:0.18;" onerror="this.style.display='none'" />
+  <!-- Watermark logo -->
+  <div id="p-logo" style="position:absolute;left:0mm;top:105mm;width:185mm;height:50mm;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;">
+    <img src="${window.location.origin}/oshali-logo.png" style="width:100%;height:100%;max-width:185mm;max-height:50mm;object-fit:contain;object-position:center;opacity:0.18;" onerror="this.style.display='none'" />
   </div>
 
   <!-- §G Acknowledgement -->
@@ -449,14 +436,14 @@ body {
     </div>
   </div>
 
-  <!-- §i Labels (unconditional) -->
+  <!-- §i Labels -->
   <div id="p-il">
     <div class="piline">Sub Total:</div>
     <div class="piline">${esc(config.vat_label)}:</div>
     <div class="piline pitot">TOTAL:</div>
   </div>
 
-  <!-- §i Values — STEP 4: unconditional -->
+  <!-- §i Values -->
   <div id="p-ir">
     <div class="piline">${fmt(netAmount)}</div>
     <div class="piline">${fmt(vatAmount)}</div>
@@ -473,11 +460,6 @@ body {
 
 export function printInvoice(invoice: Invoice, config: PrintConfig = DEFAULT_PRINT_CONFIG, driverName = '', attendantName = ''): void {
   const html = buildInvoiceHTML(invoice, config, driverName, attendantName);
-
-  console.log('[printInvoice] §G present:', html.includes('id="p-g"'));
-  console.log('[printInvoice] §i-labels present:', html.includes('id="p-il"'));
-  console.log('[printInvoice] §i-values present:', html.includes('id="p-ir"'));
-  console.log('[printInvoice] netAmount:', html.includes('N$'));
 
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);

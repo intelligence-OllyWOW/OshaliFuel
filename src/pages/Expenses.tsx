@@ -193,6 +193,7 @@ export default function Expenses() {
             submitter:profiles!expenses_submitted_by_fkey(full_name, role),
             approver:profiles!expenses_approved_by_fkey(full_name)
           `)
+          .eq('is_test_data', isTestingMode)
           .order('created_at', { ascending: false }),
       ]);
 
@@ -203,7 +204,7 @@ export default function Expenses() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isTestingMode]);
 
   useEffect(() => {
     loadData();

@@ -9,6 +9,7 @@ import HorizontalBarList from '../components/charts/HorizontalBarList';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import { Package, Receipt, FileText, TrendingUp, DollarSign, TrendingDown, AlertCircle, Calendar, ChevronLeft, ChevronRight, Users, Bell, Shield, Settings, CheckCircle } from 'lucide-react';
+import RecentActivityFeed from '../components/RecentActivityFeed';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { formatCurrency, formatNumber } from '../lib/utils';
@@ -594,18 +595,7 @@ export default function Dashboard() {
               </div>
               <Analytics />
 
-              {/* Recent Activity Feed — TODO: add notifications query to loadDashboardData */}
-              <Card>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
-                    <Bell className="w-4 h-4 text-gray-500" strokeWidth={1.5} />
-                  </div>
-                  <h3 className="text-sm font-light text-gray-500">Recent Activity</h3>
-                </div>
-                <div className="text-center py-8 text-sm font-light text-gray-400">
-                  Activity feed not yet connected — add notifications query to loadDashboardData
-                </div>
-              </Card>
+              <RecentActivityFeed />
             </>
           )}
         </div>

@@ -6,7 +6,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import { Plus, Trash2, TrendingUp } from 'lucide-react';
+import { Plus, UserX, UserCheck, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format, subDays } from 'date-fns';
 import { formatCurrency } from '../lib/utils';
@@ -27,6 +27,8 @@ export default function Users() {
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [deactivating, setDeactivating] = useState<string | null>(null);
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState<Profile | null>(null);
   const [topClients, setTopClients] = useState<ClientRevenue[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
 
@@ -141,6 +143,34 @@ export default function Users() {
     }
   }
 
+  async function handleToggleActive(user: Profile) {
+    setDeactivating(user.id);
+    setFeedback(null);
+    try {
+      const newStatus = !user.is_active;
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_active: newStatus })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, is_active: newStatus } : u))
+      );
+      setFeedback({
+        type: 'success',
+        message: `${user.full_name} has been ${newStatus ? 'reactivated' : 'deactivated'}.`,
+      });
+      setTimeout(() => setFeedback(null), 5000);
+    } catch (error: any) {
+      setFeedback({ type: 'error', message: error.message || 'Failed to update user status' });
+    } finally {
+      setDeactivating(null);
+      setShowDeactivateConfirm(null);
+    }
+  }
+
   const roleLabels: Record<string, string> = {
     super_admin: 'Super Admin',
     general_manager: 'General Manager',
@@ -237,6 +267,11 @@ export default function Users() {
                     <span className="text-xs font-light px-2 py-1 bg-gray-100 text-gray-700 rounded-full capitalize">
                       {roleLabels[user.role] || user.role}
                     </span>
+                    {user.is_active === false && (
+                      <span className="text-xs font-light px-2 py-1 bg-red-100 text-red-700 rounded-full">
+                        Deactivated
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-6 text-sm font-light text-gray-500">
                     <div>{user.email}</div>
@@ -244,8 +279,17 @@ export default function Users() {
                   </div>
                 </div>
                 {user.id !== profile?.id && (
-                  <Button size="sm" variant="ghost">
-                    <Trash2 className="w-4 h-4 text-red-500" strokeWidth={1} />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowDeactivateConfirm(user)}
+                    disabled={deactivating === user.id}
+                  >
+                    {user.is_active === false ? (
+                      <UserCheck className="w-4 h-4 text-green-500" strokeWidth={1} />
+                    ) : (
+                      <UserX className="w-4 h-4 text-red-500" strokeWidth={1} />
+                    )}
                   </Button>
                 )}
               </div>
@@ -282,6 +326,39 @@ export default function Users() {
             </div>
           </div>
         </form>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!showDeactivateConfirm}
+        onClose={() => setShowDeactivateConfirm(null)}
+        title={showDeactivateConfirm?.is_active === false ? 'Reactivate User' : 'Deactivate User'}
+      >
+        <div className="space-y-4">
+          <p className="text-sm font-light text-gray-600">
+            {showDeactivateConfirm?.is_active === false
+              ? `Are you sure you want to reactivate ${showDeactivateConfirm?.full_name}? They will be able to log in again.`
+              : `Are you sure you want to deactivate ${showDeactivateConfirm?.full_name}? They will no longer be able to log in.`
+            }
+          </p>
+          <div className="flex gap-2">
+            <Button
+              className="flex-1"
+              variant={showDeactivateConfirm?.is_active === false ? 'primary' : 'danger'}
+              onClick={() => showDeactivateConfirm && handleToggleActive(showDeactivateConfirm)}
+              disabled={!!deactivating}
+            >
+              {deactivating
+                ? 'Processing...'
+                : showDeactivateConfirm?.is_active === false
+                  ? 'Reactivate'
+                  : 'Deactivate'
+              }
+            </Button>
+            <Button variant="secondary" onClick={() => setShowDeactivateConfirm(null)} disabled={!!deactivating}>
+              Cancel
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

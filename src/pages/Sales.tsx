@@ -18,7 +18,7 @@ import { printInvoice, buildInvoiceHTML, DEFAULT_PRINT_CONFIG, PrintConfig } fro
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-async function fetchAllInvoicesWithPagination(): Promise<any[]> {
+async function fetchAllInvoicesWithPagination(testMode: boolean): Promise<any[]> {
   const PAGE_SIZE = 1000;
   let allInvoices: any[] = [];
   let page = 0;
@@ -32,6 +32,7 @@ async function fetchAllInvoicesWithPagination(): Promise<any[]> {
         client:client_id (*),
         client_vehicle:vehicle_id (*)
       `)
+      .eq('is_test_data', testMode)
       .order('created_at', { ascending: false })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
@@ -91,6 +92,7 @@ interface Invoice {
   invoice_date?: string | null;
   due_date?: string | null;
   payment_reference?: string | null;
+  shift?: number | null;
   client?: Client | null;
   client_vehicle?: ClientVehicle | null;
 }
@@ -164,7 +166,7 @@ export default function Sales() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [isTestingMode]);
 
   useEffect(() => {
     if (selectedClient) {
@@ -186,7 +188,7 @@ export default function Sales() {
   async function loadData() {
     try {
       const [allInvoices, deliveryNotesResult, clientsResult, vehiclesResult, tanksResult, priceResult] = await Promise.all([
-        fetchAllInvoicesWithPagination(),
+        fetchAllInvoicesWithPagination(isTestingMode),
         supabase
           .from('delivery_notes')
           .select('*')
@@ -357,12 +359,12 @@ export default function Sales() {
     }
   }
 
-  async function handleCreateInvoiceFromDeliveryNote(deliveryNote: DeliveryNote, tankId: string) {
+  async function handleCreateInvoiceFromDeliveryNote(deliveryNote: DeliveryNote, tankId: string, invoiceDate: string, shift: number) {
     if (!profile || submitting) return;
 
     setSubmitting(true);
     try {
-      const litersSold = deliveryNote.litres_reading || deliveryNote.litres_dispensed;
+      const litersSold = Math.round((deliveryNote.litres_reading || deliveryNote.litres_dispensed) * 100) / 100;
       const clientId = deliveryNote.client_id;
 
       const { data: inventoryItems } = await supabase
@@ -398,8 +400,9 @@ export default function Sales() {
           tank_id: tankId,
           selling_price_per_liter: effectivePrice,
           item_description: 'Diesel Fuel',
-          invoice_date: new Date().toISOString().split('T')[0],
-          due_date: new Date().toISOString().split('T')[0],
+          invoice_date: invoiceDate,
+          due_date: invoiceDate,
+          shift: shift,
           status: 'unsettled',
           created_by: profile.id,
           is_test_data: isTestingMode,
@@ -420,7 +423,7 @@ export default function Sales() {
       for (const item of inventoryItems) {
         if (remainingToSell <= 0) break;
 
-        const litersFromThisItem = Math.min(item.remaining_liters, remainingToSell);
+        const litersFromThisItem = Math.round(Math.min(item.remaining_liters, remainingToSell) * 100) / 100;
 
         lineItems.push({
           invoice_id: invoiceData.id,
@@ -431,7 +434,7 @@ export default function Sales() {
           is_test_data: isTestingMode,
         });
 
-        const newRemaining = item.remaining_liters - litersFromThisItem;
+        const newRemaining = Math.round((item.remaining_liters - litersFromThisItem) * 100) / 100;
 
         await supabase
           .from('inventory_items')
@@ -479,12 +482,13 @@ export default function Sales() {
 
     setSubmitting(true);
     try {
-      const litersSold = parseFloat(formData.get('liters') as string);
+      const litersSold = Math.round(parseFloat(formData.get('liters') as string) * 100) / 100;
       const tankId = formData.get('tank') as string;
       const deliveryNote = formData.get('deliveryNote') as string;
       const itemDescription = formData.get('itemDescription') as string || 'Diesel Fuel';
       const invoiceDate = formData.get('invoiceDate') as string;
       const dueDate = formData.get('dueDate') as string;
+      const shift = parseInt(formData.get('shift') as string) || 1;
       const paymentReference = (formData.get('paymentReference') as string)?.trim() || null;
 
       const { data: existingDeliveryNote } = await supabase
@@ -533,6 +537,7 @@ export default function Sales() {
           item_description: itemDescription,
           invoice_date: invoiceDate,
           due_date: dueDate,
+          shift: shift,
           payment_reference: paymentReference,
           status: 'unsettled',
           created_by: profile.id,
@@ -554,7 +559,7 @@ export default function Sales() {
       for (const item of inventoryItems) {
         if (remainingToSell <= 0) break;
 
-        const litersFromThisItem = Math.min(item.remaining_liters, remainingToSell);
+        const litersFromThisItem = Math.round(Math.min(item.remaining_liters, remainingToSell) * 100) / 100;
 
         lineItems.push({
           invoice_id: invoiceData.id,
@@ -565,7 +570,7 @@ export default function Sales() {
           is_test_data: isTestingMode,
         });
 
-        const newRemaining = item.remaining_liters - litersFromThisItem;
+        const newRemaining = Math.round((item.remaining_liters - litersFromThisItem) * 100) / 100;
 
         await supabase
           .from('inventory_items')
@@ -978,7 +983,7 @@ export default function Sales() {
 
       {activeTab === 'statistics' ? (
         <SalesStatistics />
-      ) : activeTab === 'bulk_delete' ? (
+      ) : activeTab === 'bulk_delete' && canBulkDelete ? (
         <div className="space-y-4">
           {bulkDeleteFeedback && (
             <div className={`p-4 rounded-lg border ${
@@ -1358,6 +1363,11 @@ export default function Sales() {
                     <span className="text-xs font-light text-gray-500">
                       {format(new Date(invoice.invoice_date || invoice.created_at), 'MMM dd, yyyy')}
                     </span>
+                    {invoice.shift && (
+                      <span className="text-xs font-light px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                        S{invoice.shift}
+                      </span>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm font-light">
                     <div>
@@ -1497,7 +1507,9 @@ export default function Sales() {
             e.preventDefault();
             const formData = new FormData(e.currentTarget);
             const tankId = formData.get('tank') as string;
-            handleCreateInvoiceFromDeliveryNote(selectedDeliveryNote, tankId);
+            const invoiceDate = formData.get('invoiceDate') as string;
+            const shift = parseInt(formData.get('shift') as string) || 1;
+            handleCreateInvoiceFromDeliveryNote(selectedDeliveryNote, tankId, invoiceDate, shift);
           }}>
             <div className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
@@ -1520,6 +1532,20 @@ export default function Sales() {
                     <div className="text-blue-900 font-medium">{selectedDeliveryNote.litres_reading}L</div>
                   </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  name="invoiceDate"
+                  label="Invoice Date"
+                  type="date"
+                  defaultValue={new Date().toISOString().split('T')[0]}
+                  required
+                />
+                <Select name="shift" label="Shift" required>
+                  <option value="1">Shift 1 - Day</option>
+                  <option value="2">Shift 2 - Night</option>
+                </Select>
               </div>
 
               <Select name="tank" label="Tank" required>
@@ -1588,6 +1614,11 @@ export default function Sales() {
                 required
               />
             </div>
+
+            <Select name="shift" label="Shift" required>
+              <option value="1">Shift 1 - Day</option>
+              <option value="2">Shift 2 - Night</option>
+            </Select>
 
             <Input
               name="paymentReference"
@@ -1784,6 +1815,10 @@ export default function Sales() {
                         ? format(new Date(selectedInvoice.created_at), 'MMM dd, yyyy')
                         : '-'}
                   </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Shift</div>
+                  <div>{selectedInvoice.shift === 2 ? 'Shift 2 - Night' : 'Shift 1 - Day'}</div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Client</div>

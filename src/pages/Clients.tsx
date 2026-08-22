@@ -79,13 +79,14 @@ export default function Clients() {
 
   useEffect(() => {
     loadClients();
-  }, []);
+  }, [isTestingMode]);
 
   async function loadClients() {
     try {
       const { data: clientsData } = await supabase
         .from('clients')
         .select('*')
+        .eq('is_test_data', isTestingMode)
         .order('name');
 
       if (clientsData) {

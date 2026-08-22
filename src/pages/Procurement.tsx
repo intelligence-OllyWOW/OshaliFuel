@@ -62,7 +62,7 @@ export default function Procurement() {
     loadData();
     loadTanks();
     loadSuppliers();
-  }, [activeTab]);
+  }, [activeTab, isTestingMode]);
 
   useEffect(() => {
     function handleClickOutside() { setPoActionMenu(null); }
@@ -105,18 +105,21 @@ export default function Procurement() {
         const { data } = await supabase
           .from('purchase_requisitions')
           .select('*')
+          .eq('is_test_data', isTestingMode)
           .order('created_at', { ascending: false });
         setPrs(data || []);
       } else if (activeTab === 'po') {
         const { data } = await supabase
           .from('purchase_orders')
           .select('*')
+          .eq('is_test_data', isTestingMode)
           .order('created_at', { ascending: false });
         setPos(data || []);
       } else {
         const { data } = await supabase
           .from('goods_received')
           .select('*')
+          .eq('is_test_data', isTestingMode)
           .order('created_at', { ascending: false });
         setGrs(data || []);
       }

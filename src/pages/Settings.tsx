@@ -610,7 +610,7 @@ export default function Settings() {
 
   const tabs = [
     { id: 'tank-alerts' as SettingsTab, label: 'Tank Alerts', icon: Gauge, show: true },
-    { id: 'test-mode' as SettingsTab, label: 'Test Mode', icon: FlaskConical, show: canEdit },
+    { id: 'test-mode' as SettingsTab, label: 'Test Mode', icon: FlaskConical, show: isSuperAdmin },
     { id: 'invoice-settings' as SettingsTab, label: 'Invoice & Receipt', icon: FileText, show: canEdit },
     { id: 'doc-management' as SettingsTab, label: 'Document Management', icon: Search, show: isSuperAdmin },
   ].filter(tab => tab.show);
@@ -876,7 +876,7 @@ export default function Settings() {
           </Card>
         )}
 
-        {activeTab === 'test-mode' && canEdit && (
+        {activeTab === 'test-mode' && isSuperAdmin && (
           <Card>
             <div className="space-y-6">
               <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
@@ -931,11 +931,11 @@ export default function Settings() {
                     disabled={saving}
                     className="relative w-full h-10 rounded-lg font-light overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed select-none"
                   >
+                    <div className="absolute inset-0 bg-gray-200" />
                     <div
                       className="absolute inset-0 bg-cyan-500 transition-all duration-100"
                       style={{ width: `${holdProgress}%` }}
                     />
-                    <div className="absolute inset-0 bg-gray-200" />
                     <div className="relative z-10 flex items-center justify-center gap-2 h-full text-gray-700">
                       <Lock className="w-4 h-4" strokeWidth={1.5} />
                       <span className="text-sm">

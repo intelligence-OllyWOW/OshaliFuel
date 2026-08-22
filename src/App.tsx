@@ -20,6 +20,11 @@ import AdministratorPortal from './pages/portals/AdministratorPortal';
 import OperationsPortal from './pages/portals/OperationsPortal';
 import AttendantPortal from './pages/portals/AttendantPortal';
 import Settings from './pages/Settings';
+import FuelMovement from './pages/FuelMovement';
+import ShiftCashUp from './pages/ShiftCashUp';
+import CreditLedger from './pages/CreditLedger';
+import RecurringExpenses from './pages/RecurringExpenses';
+import { ToastProvider } from './components/Toast';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 
 function AppContent() {
@@ -27,6 +32,7 @@ function AppContent() {
   if (loading) return <OshaliLoader variant="fullscreen" message="Starting up..." />;
 
   return (
+    <ToastProvider>
     <TestingModeProvider>
       <PWAUpdatePrompt />
       <Routes>
@@ -121,6 +127,46 @@ function AppContent() {
             }
           />
           <Route
+            path="/fuel-movement"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin', 'general_manager', 'administrator', 'operations_supervisor']}>
+                <Layout>
+                  <FuelMovement />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shift-cashup"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin', 'general_manager', 'finance', 'administrator', 'operations_supervisor']}>
+                <Layout>
+                  <ShiftCashUp />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/credit-ledger"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin', 'general_manager', 'finance']}>
+                <Layout>
+                  <CreditLedger />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recurring-expenses"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin', 'general_manager', 'finance', 'administrator']}>
+                <Layout>
+                  <RecurringExpenses />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/settings"
             element={
               <ProtectedRoute allowedRoles={['super_admin']}>
@@ -183,6 +229,7 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     </TestingModeProvider>
+    </ToastProvider>
   );
 }
 

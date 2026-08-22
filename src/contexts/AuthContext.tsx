@@ -60,6 +60,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       if (error) throw error;
+
+      if (data && data.is_active === false) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        return;
+      }
+
       setProfile(data);
     } catch (error) {
       console.error('Error loading profile:', error);
