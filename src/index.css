@@ -1,3 +1,55 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Thermal receipt print styles ── */
+@media print {
+  /* Hide everything by default */
+  body > * {
+    display: none !important;
+  }
+
+  /* The receipt overlay mounts inside #root, so hide root's normal content */
+  #root {
+    all: unset !important;
+  }
+  #root > *:not(:has(.receipt-content)) {
+    display: none !important;
+  }
+
+  /* Hide the toolbar (Close/Print buttons) */
+  .receipt-toolbar {
+    display: none !important;
+  }
+
+  /* Show only the receipt scroll area and paper */
+  .receipt-scroll {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+  }
+
+  .receipt-paper {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    width: 48mm !important;
+    margin: 0 !important;
+  }
+
+  .receipt-content {
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+    color: #000 !important;
+    white-space: pre !important;
+    padding: 2mm !important;
+    margin: 0 !important;
+  }
+
+  @page {
+    size: 48mm auto;
+    margin: 0;
+  }
+}

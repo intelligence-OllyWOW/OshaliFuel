@@ -9,7 +9,8 @@ import { FileText, Plus, Eye, Camera, X, Printer, Receipt, ChevronDown } from 'l
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { printDeliveryNote } from '../../lib/printDeliveryNote';
-import { printThermalReceipt } from '../../lib/printThermalReceipt';
+import ReceiptPreview from '../../components/ReceiptPreview';
+import type { ReceiptData } from '../../lib/printThermalReceipt';
 import type { Database } from '../../lib/database.types';
 
 type Client = Database['public']['Tables']['clients']['Row'];
@@ -34,6 +35,7 @@ export default function AttendantPortal() {
   const [pricePerLiter, setPricePerLiter] = useState<number>(0);
   const [companySettings, setCompanySettings] = useState<{ company_name: string; company_address: string; company_tel: string }>({ company_name: '', company_address: '', company_tel: '' });
   const [meterB, setMeterB] = useState<string>('');
+  const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -103,7 +105,7 @@ export default function AttendantPortal() {
   }
 
   function handlePrintReceipt(note: DeliveryNote) {
-    printThermalReceipt({
+    setReceiptPreview({
       noteNumber: note.note_number,
       customerName: note.customer_name,
       vehicleRegistration: note.vehicle_registration,
@@ -617,6 +619,10 @@ export default function AttendantPortal() {
           </div>
         )}
       </div>
+
+      {receiptPreview && (
+        <ReceiptPreview data={receiptPreview} onClose={() => setReceiptPreview(null)} />
+      )}
     </div>
   );
 }
