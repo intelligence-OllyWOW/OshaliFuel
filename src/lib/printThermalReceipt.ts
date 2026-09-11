@@ -113,23 +113,27 @@ export function buildThermalReceipt(data: ReceiptData): string {
   return lines.join('\n');
 }
 
-export function printThermalReceipt(data: ReceiptData) {
-  const receiptText = buildThermalReceipt(data);
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
-  const html = `<!DOCTYPE html>
+function buildReceiptHtml(data: ReceiptData): string {
+  const receiptText = buildThermalReceipt(data);
+  return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Receipt ${data.noteNumber}</title>
+<title>Receipt ${escapeHtml(data.noteNumber)}</title>
 <style>
   @page {
     size: 48mm auto;
     margin: 0;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
+  html, body {
     width: 48mm;
+    max-width: 48mm;
     font-family: 'Courier New', Courier, monospace;
     font-size: 10px;
     line-height: 1.3;
@@ -145,30 +149,57 @@ export function printThermalReceipt(data: ReceiptData) {
     white-space: pre;
     padding: 2mm;
     margin: 0;
+    word-break: keep-all;
+    overflow: hidden;
   }
   @media screen {
-    body {
+    html, body {
       max-width: 48mm;
       margin: 0 auto;
-      padding: 0;
-      border: 1px solid #ccc;
-      min-height: 100vh;
     }
   }
 </style>
 </head>
 <body>
-<pre>${receiptText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-<script>
-  window.onafterprint = function() { window.close(); };
-  setTimeout(function() { window.print(); }, 300);
-</script>
+<pre>${escapeHtml(receiptText)}</pre>
 </body>
 </html>`;
+}
 
-  const printWindow = window.open('', '_blank', 'width=280,height=600');
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
+export function printThermalReceipt(data: ReceiptData) {
+  const html = buildReceiptHtml(data);
+  const isAndroid = /android/i.test(navigator.userAgent);
+
+  if (isAndroid) {
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:48mm;height:0;border:none;visibility:hidden;';
+    iframe.src = url;
+
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.print();
+        } catch {
+          window.open(url, '_blank');
+        }
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          URL.revokeObjectURL(url);
+        }, 3000);
+      }, 400);
+    };
+
+    document.body.appendChild(iframe);
+  } else {
+    const printWindow = window.open('', '_blank', 'width=280,height=600');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.onafterprint = () => printWindow.close();
+      setTimeout(() => printWindow.print(), 300);
+    }
   }
 }
