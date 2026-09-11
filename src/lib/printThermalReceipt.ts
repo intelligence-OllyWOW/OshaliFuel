@@ -76,8 +76,7 @@ export function buildThermalReceipt(data: ReceiptData): string {
   lines.push(doubleLine());
 
   lines.push(leftRight('Ref:', data.noteNumber));
-  lines.push(leftRight('Date:', date));
-  lines.push(leftRight('Time:', time));
+  lines.push(leftRight('Date:', date + ' ' + time));
   lines.push(dashes());
 
   lines.push('Customer:');
@@ -86,8 +85,6 @@ export function buildThermalReceipt(data: ReceiptData): string {
   lines.push(leftRight('Driver:', data.driverName.slice(0, 20)));
   lines.push(dashes());
 
-  lines.push(leftRight('Meter A:', data.meterA.toFixed(2)));
-  lines.push(leftRight('Meter B:', data.meterB.toFixed(2)));
   lines.push(leftRight('Litres:', data.litersReading.toFixed(2) + ' L'));
   lines.push(dashes());
 
