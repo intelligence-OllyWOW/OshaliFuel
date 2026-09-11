@@ -261,6 +261,33 @@ export default function AttendantPortal() {
               <p className="text-sm text-gray-400 mt-0.5">{profile.full_name}</p>
             )}
           </div>
+          {/* Test Print */}
+          <button
+            type="button"
+            onClick={() => handlePrintReceipt({
+              id: 'test',
+              note_number: 'DN-TEST-0001',
+              customer_name: 'Test Customer',
+              vehicle_registration: 'N 1234 W',
+              driver_name: 'Test Driver',
+              meter_reading_a: 12345.00,
+              meter_reading_b: 12395.50,
+              litres_dispensed: 50.50,
+              litres_reading: 50.50,
+              attendant_name: profile?.full_name || 'Attendant',
+              created_at: new Date().toISOString(),
+              client_id: null,
+              attendant_id: profile?.id || '',
+              meter_photo_url: null,
+              has_invoice: false,
+              invoice_id: null,
+            } as any)}
+            className="w-full mb-3 py-2.5 text-sm font-semibold rounded-2xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-[#1B2D5B] hover:text-[#1B2D5B] transition-colors flex items-center justify-center gap-2"
+          >
+            <Printer className="w-4 h-4" strokeWidth={2} />
+            Test Print Receipt
+          </button>
+
           {/* iOS segmented tab control */}
           <div className="bg-gray-100 rounded-2xl p-1 flex">
             <button
