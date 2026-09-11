@@ -5,10 +5,11 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
-import { FileText, Plus, Eye, Camera, X, Printer, ChevronDown } from 'lucide-react';
+import { FileText, Plus, Eye, Camera, X, Printer, Receipt, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { printDeliveryNote } from '../../lib/printDeliveryNote';
+import { printThermalReceipt } from '../../lib/printThermalReceipt';
 import type { Database } from '../../lib/database.types';
 
 type Client = Database['public']['Tables']['clients']['Row'];
@@ -30,12 +31,15 @@ export default function AttendantPortal() {
   const [meterPhoto, setMeterPhoto] = useState<File | null>(null);
   const [meterPhotoPreview, setMeterPhotoPreview] = useState<string | null>(null);
   const [meterA, setMeterA] = useState<string>('');
+  const [pricePerLiter, setPricePerLiter] = useState<number>(0);
+  const [companySettings, setCompanySettings] = useState<{ company_name: string; company_address: string; company_tel: string }>({ company_name: '', company_address: '', company_tel: '' });
   const [meterB, setMeterB] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadClients();
     loadDeliveryNotes();
+    loadReceiptSettings();
   }, []);
 
   useEffect(() => {
@@ -87,6 +91,34 @@ export default function AttendantPortal() {
     } catch (error) {
       console.error('Error loading delivery notes:', error);
     }
+  }
+
+  async function loadReceiptSettings() {
+    const [{ data: price }, { data: settings }] = await Promise.all([
+      supabase.from('pricing_settings').select('price_per_liter').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('system_settings').select('company_name, company_address, company_tel').maybeSingle(),
+    ]);
+    if (price) setPricePerLiter(price.price_per_liter);
+    if (settings) setCompanySettings(settings);
+  }
+
+  function handlePrintReceipt(note: DeliveryNote) {
+    printThermalReceipt({
+      noteNumber: note.note_number,
+      customerName: note.customer_name,
+      vehicleRegistration: note.vehicle_registration,
+      driverName: note.driver_name,
+      meterA: note.meter_reading_a || 0,
+      meterB: note.meter_reading_b || 0,
+      litersDispensed: note.litres_dispensed,
+      litersReading: note.litres_reading || note.litres_dispensed,
+      pricePerLiter,
+      attendantName: note.attendant_name,
+      createdAt: note.created_at,
+      companyName: companySettings.company_name,
+      companyAddress: companySettings.company_address,
+      companyTel: companySettings.company_tel,
+    });
   }
 
   function handleCameraClick() {
@@ -524,14 +556,23 @@ export default function AttendantPortal() {
                         <div className="text-sm font-medium text-gray-700">{note.attendant_name}</div>
                         <div className="text-xs text-gray-400">{format(new Date(note.created_at), 'MMM dd, HH:mm')}</div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => printDeliveryNote(note)}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-full border border-[#F5A623] text-[#F5A623] hover:bg-amber-50 transition-colors"
-                      >
-                        <Printer className="w-4 h-4" strokeWidth={2} />
-                        Print
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handlePrintReceipt(note)}
+                          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-full bg-[#1B2D5B] text-white hover:bg-[#152347] transition-colors"
+                        >
+                          <Receipt className="w-4 h-4" strokeWidth={2} />
+                          Receipt
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printDeliveryNote(note)}
+                          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                        >
+                          <Printer className="w-4 h-4" strokeWidth={2} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
