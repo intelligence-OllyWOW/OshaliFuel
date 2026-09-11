@@ -4,17 +4,15 @@
 
 /* ── Thermal receipt print styles ── */
 @media print {
-  /* Hide everything by default */
-  body > * {
+  /* Hide everything except the receipt portal */
+  body > *:not(.receipt-portal) {
     display: none !important;
   }
 
-  /* The receipt overlay mounts inside #root, so hide root's normal content */
-  #root {
-    all: unset !important;
-  }
-  #root > *:not(:has(.receipt-content)) {
-    display: none !important;
+  .receipt-portal {
+    display: block !important;
+    position: static !important;
+    background: #fff !important;
   }
 
   /* Hide the toolbar (Close/Print buttons) */

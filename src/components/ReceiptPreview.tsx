@@ -15,7 +15,7 @@ export default function ReceiptPreview({ data, onClose }: Props) {
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-gray-900/80 backdrop-blur-sm">
+    <div className="receipt-portal fixed inset-0 z-[9999] flex flex-col bg-gray-900/80 backdrop-blur-sm">
       <div className="receipt-toolbar flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 shrink-0">
         <button
           type="button"
